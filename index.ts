@@ -2,28 +2,34 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import db from '#db';  // Use #db instead of relative import
+import { ensureHeatmapTablesExist } from './src/utils/dbMigration.js';
 
 // Import routers
 import locationsRouter from './src/routes/locations.js';
 import heatmapRouter from './src/routes/heatmap.js';
-import eventsRouter, { broadcastToAll } from './src/routes/events.js';
+import listenRouter, { broadcastToAll } from './src/routes/listen.js';
 import statusRouter from './src/routes/status.js';
 import adminRouter from './src/routes/admin.js';
 import { authenticateAdmin } from './src/middleware/auth.js';
+
+// Import events router for backward compatibility
+import eventsRouter from './src/routes/events.js';
 
 const app = express();
 const server = createServer(app);
 const PORT = process.env.SERVER_PORT || 3000;
 
-// Enhanced CORS for admin panel support - optimize for Docker network
+// Enhanced CORS configuration for SSE support
 app.use(cors({
   origin: function(origin, callback) {
     // In Docker environment, allow all origins
     // Security is handled at the network level
     callback(null, true);
   },
-  credentials: true
+  credentials: true,
+  exposedHeaders: ['Content-Type', 'Cache-Control', 'Connection']
 }));
+
 app.use(express.json());
 
 // Add environment variables for Discord authentication
@@ -38,43 +44,28 @@ app.use((req, res, next) => {
 // Mount the routers - all with /api prefix
 app.use('/api/locations', locationsRouter);
 app.use('/api/heatmap', heatmapRouter);
-app.use('/api/listen', eventsRouter);  // SSE endpoint
-app.use('/api/status', statusRouter);   // Status includes health check
+app.use('/api/listen', listenRouter);  // Primary SSE endpoint
+app.use('/api/events', eventsRouter);  // Legacy SSE endpoint for compatibility
+app.use('/api/status', statusRouter);  // Status includes health check
 app.use('/api/admin', authenticateAdmin, adminRouter); // Protected admin routes
-
-// Mount legacy admin routes directly for backward compatibility (can be removed later)
-app.get('/api/admin/categories', async (req, res) => {
-  // Forward to the admin router's implementation
-  try {
-    const prisma = await db.getPrismaClient();
-    if (!prisma) {
-      return res.status(500).json({ error: 'Failed to connect to database' });
-    }
-    
-    // Get unique categories (types) from locations
-    const uniqueCategories = await prisma.location.findMany({
-      distinct: ['type'],
-      select: {
-        type: true
-      },
-      orderBy: {
-        type: 'asc'
-      }
-    });
-    
-    // Extract the type values
-    const categories = uniqueCategories.map(item => item.type);
-    res.json(categories);
-  } catch (error) {
-    console.error('Error fetching categories:', error);
-    res.status(500).json({ error: 'Failed to fetch categories' });
-  }
-});
 
 // Health route at root level for easy access
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
+
+// Also add API health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'API is running' });
+});
+
+// Add dedicated CORS preflight for SSE endpoint
+app.options('/api/listen', cors({
+  origin: '*',
+  methods: ['GET'],
+  credentials: true,
+  maxAge: 86400, // 1 day in seconds
+}));
 
 // Setup database change listener with proper error handling
 async function setupDatabaseListener() {
@@ -102,12 +93,34 @@ async function setupDatabaseListener() {
   }
 }
 
+// Ensure database tables exist
+async function ensureDatabaseTablesExist() {
+  try {
+    console.log("Ensuring required database tables exist...");
+    
+    // Ensure heatmap tables exist
+    const result = await ensureHeatmapTablesExist();
+    
+    if (result.success) {
+      console.log("Database tables check completed successfully");
+    } else {
+      console.warn("Database tables check completed with warnings:", result.message);
+    }
+  } catch (error) {
+    console.error("Failed to ensure database tables exist:", error);
+    console.log("Server will continue, but some features may not work correctly");
+  }
+}
+
 // Start server
 server.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`API endpoints available at: http://localhost:${PORT}/api/`);
   
-  // Try to set up database listener but don't fail if it doesn't work
+  // First, ensure database tables exist
+  await ensureDatabaseTablesExist();
+    
+  // Then try to set up database listener
   try {
     await setupDatabaseListener();
   } catch (error) {

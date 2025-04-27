@@ -1,9 +1,41 @@
 import express from 'express';
 import db from '#db';
+import { seedHeatmapTestData } from '../utils/heatmapTestData.js';
+import { ensureHeatmapTablesExist } from '../utils/dbMigration.js';
 
 const router = express.Router();
 
 console.log('Heatmap router file loaded.');
+
+/**
+ * Ensure tables exist and test data is populated if tables are empty
+ */
+async function ensureHeatmapSetup() {
+  try {
+    // First ensure the tables exist
+    const migrationResult = await ensureHeatmapTablesExist();
+    
+    if (!migrationResult.success) {
+      console.log("Failed to ensure heatmap tables exist:", migrationResult.message);
+      return;
+    }
+    
+    // Then get the Prisma client to seed data
+    const prisma = await db.getPrismaClient();
+    if (!prisma) {
+      console.log("Failed to get Prisma client for seeding");
+      return;
+    }
+    
+    // Now try to seed test data
+    await seedHeatmapTestData(prisma);
+  } catch (error) {
+    console.error('Failed to set up heatmap:', error);
+  }
+}
+
+// Initialize tables and test data - but don't block the router initialization
+ensureHeatmapSetup().catch(console.error);
 
 /**
  * Get all heatmap datapoints
@@ -18,15 +50,30 @@ router.get('/datapoints', async (req, res) => {
       return res.status(500).json({ error: 'Failed to connect to database' });
     }
 
+    // Make sure we have tables and test data
+    await ensureHeatmapSetup();
+
     let where = {};
     
     // Add filters if provided
     if (typeId) {
-      where.types = {
-        some: {
-          typeId: parseInt(typeId, 10)
-        }
-      };
+      // Handle multiple type IDs separated by commas
+      if (typeId.includes(',')) {
+        const typeIds = typeId.split(',').map(id => parseInt(id, 10));
+        where.types = {
+          some: {
+            typeId: {
+              in: typeIds
+            }
+          }
+        };
+      } else {
+        where.types = {
+          some: {
+            typeId: parseInt(typeId, 10)
+          }
+        };
+      }
     }
 
     if (visible !== undefined) {
@@ -319,6 +366,9 @@ router.get('/types', async (req, res) => {
     if (!prisma) {
       return res.status(500).json({ error: 'Failed to connect to database' });
     }
+
+    // Make sure we have test data if tables are empty
+    await ensureHeatmapSetup();  // Replace ensureTestData with ensureHeatmapSetup
 
     const types = await prisma.heatmapType.findMany({
       orderBy: {
