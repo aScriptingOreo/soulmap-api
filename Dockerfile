@@ -1,6 +1,8 @@
 # Use the latest Bun image as base
 FROM oven/bun:latest
 
+RUN apt-get update -y && apt-get install -y openssl
+
 # Set working directory
 WORKDIR /app
 

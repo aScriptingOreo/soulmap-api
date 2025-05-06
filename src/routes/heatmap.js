@@ -1,6 +1,6 @@
 import express from 'express';
 import db from '#db';
-import { seedHeatmapTestData } from '../utils/heatmapTestData.js';
+// Import only the table creation function, not the data seeding function
 import { ensureHeatmapTablesExist } from '../utils/dbMigration.js';
 
 const router = express.Router();
@@ -8,33 +8,25 @@ const router = express.Router();
 console.log('Heatmap router file loaded.');
 
 /**
- * Ensure tables exist and test data is populated if tables are empty
+ * Ensure tables exist but don't auto-populate with test data
  */
 async function ensureHeatmapSetup() {
   try {
-    // First ensure the tables exist
+    // Only ensure the tables exist, don't seed test data
     const migrationResult = await ensureHeatmapTablesExist();
-    
+
     if (!migrationResult.success) {
       console.log("Failed to ensure heatmap tables exist:", migrationResult.message);
       return;
     }
-    
-    // Then get the Prisma client to seed data
-    const prisma = await db.getPrismaClient();
-    if (!prisma) {
-      console.log("Failed to get Prisma client for seeding");
-      return;
-    }
-    
-    // Now try to seed test data
-    await seedHeatmapTestData(prisma);
+
+    console.log("Heatmap tables verified.");
   } catch (error) {
     console.error('Failed to set up heatmap:', error);
   }
 }
 
-// Initialize tables and test data - but don't block the router initialization
+// Initialize tables but don't block the router initialization
 ensureHeatmapSetup().catch(console.error);
 
 /**
@@ -45,7 +37,7 @@ router.get('/datapoints', async (req, res) => {
   try {
     const { typeId, visible } = req.query;
     const prisma = await db.getPrismaClient();
-    
+
     if (!prisma) {
       return res.status(500).json({ error: 'Failed to connect to database' });
     }
@@ -54,7 +46,7 @@ router.get('/datapoints', async (req, res) => {
     await ensureHeatmapSetup();
 
     let where = {};
-    
+
     // Add filters if provided
     if (typeId) {
       // Handle multiple type IDs separated by commas
@@ -126,7 +118,7 @@ router.get('/datapoints/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const prisma = await db.getPrismaClient();
-    
+
     if (!prisma) {
       return res.status(500).json({ error: 'Failed to connect to database' });
     }
@@ -178,15 +170,15 @@ router.post('/datapoints', async (req, res) => {
   try {
     const { lat, intensity, weight, radius, visible, typeIds } = req.body;
     const prisma = await db.getPrismaClient();
-    
+
     if (!prisma) {
       return res.status(500).json({ error: 'Failed to connect to database' });
     }
 
     // Validate required fields
     if (!lat || !weight || !Array.isArray(typeIds) || typeIds.length === 0) {
-      return res.status(400).json({ 
-        error: 'Missing required fields. Required: lat, weight, and at least one typeId' 
+      return res.status(400).json({
+        error: 'Missing required fields. Required: lat, weight, and at least one typeId'
       });
     }
 
@@ -248,7 +240,7 @@ router.put('/datapoints/:id', async (req, res) => {
     const { id } = req.params;
     const { lat, intensity, weight, radius, visible, typeIds } = req.body;
     const prisma = await db.getPrismaClient();
-    
+
     if (!prisma) {
       return res.status(500).json({ error: 'Failed to connect to database' });
     }
@@ -317,12 +309,12 @@ router.put('/datapoints/:id', async (req, res) => {
     res.json(transformedDatapoint);
   } catch (error) {
     console.error('Error updating heatmap datapoint:', error);
-    
+
     // Check for Prisma not found error
     if (error.code === 'P2025') {
       return res.status(404).json({ error: 'Heatmap datapoint not found for update' });
     }
-    
+
     res.status(500).json({ error: 'Failed to update heatmap datapoint' });
   }
 });
@@ -334,7 +326,7 @@ router.delete('/datapoints/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const prisma = await db.getPrismaClient();
-    
+
     if (!prisma) {
       return res.status(500).json({ error: 'Failed to connect to database' });
     }
@@ -346,12 +338,12 @@ router.delete('/datapoints/:id', async (req, res) => {
     res.status(204).send();
   } catch (error) {
     console.error('Error deleting heatmap datapoint:', error);
-    
+
     // Check for Prisma not found error
     if (error.code === 'P2025') {
       return res.status(404).json({ error: 'Heatmap datapoint not found for deletion' });
     }
-    
+
     res.status(500).json({ error: 'Failed to delete heatmap datapoint' });
   }
 });
@@ -362,7 +354,7 @@ router.delete('/datapoints/:id', async (req, res) => {
 router.get('/types', async (req, res) => {
   try {
     const prisma = await db.getPrismaClient();
-    
+
     if (!prisma) {
       return res.status(500).json({ error: 'Failed to connect to database' });
     }
@@ -390,7 +382,7 @@ router.get('/types/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const prisma = await db.getPrismaClient();
-    
+
     if (!prisma) {
       return res.status(500).json({ error: 'Failed to connect to database' });
     }
@@ -417,7 +409,7 @@ router.post('/types', async (req, res) => {
   try {
     const { name, intensity, colorBindings } = req.body;
     const prisma = await db.getPrismaClient();
-    
+
     if (!prisma) {
       return res.status(500).json({ error: 'Failed to connect to database' });
     }
@@ -438,12 +430,12 @@ router.post('/types', async (req, res) => {
     res.status(201).json(newType);
   } catch (error) {
     console.error('Error creating heatmap type:', error);
-    
+
     // Check for unique constraint error
     if (error.code === 'P2002') {
       return res.status(409).json({ error: 'A heatmap type with this name already exists' });
     }
-    
+
     res.status(500).json({ error: 'Failed to create heatmap type' });
   }
 });
@@ -456,7 +448,7 @@ router.put('/types/:id', async (req, res) => {
     const { id } = req.params;
     const { name, intensity, colorBindings } = req.body;
     const prisma = await db.getPrismaClient();
-    
+
     if (!prisma) {
       return res.status(500).json({ error: 'Failed to connect to database' });
     }
@@ -473,17 +465,17 @@ router.put('/types/:id', async (req, res) => {
     res.json(updatedType);
   } catch (error) {
     console.error('Error updating heatmap type:', error);
-    
+
     // Check for Prisma not found error
     if (error.code === 'P2025') {
       return res.status(404).json({ error: 'Heatmap type not found for update' });
     }
-    
+
     // Check for unique constraint error
     if (error.code === 'P2002') {
       return res.status(409).json({ error: 'A heatmap type with this name already exists' });
     }
-    
+
     res.status(500).json({ error: 'Failed to update heatmap type' });
   }
 });
@@ -495,7 +487,7 @@ router.delete('/types/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const prisma = await db.getPrismaClient();
-    
+
     if (!prisma) {
       return res.status(500).json({ error: 'Failed to connect to database' });
     }
@@ -507,12 +499,12 @@ router.delete('/types/:id', async (req, res) => {
     res.status(204).send();
   } catch (error) {
     console.error('Error deleting heatmap type:', error);
-    
+
     // Check for Prisma not found error
     if (error.code === 'P2025') {
       return res.status(404).json({ error: 'Heatmap type not found for deletion' });
     }
-    
+
     res.status(500).json({ error: 'Failed to delete heatmap type' });
   }
 });
@@ -534,6 +526,63 @@ router.get('/config', async (req, res) => {
   } catch (error) {
     console.error('Error fetching heatmap configuration:', error);
     res.status(500).json({ error: 'Failed to fetch heatmap configuration' });
+  }
+});
+
+/**
+ * Get heatmap database hash for client-side caching
+ */
+router.get('/hash', async (req, res) => {
+  try {
+    const prisma = await db.getPrismaClient();
+    if (!prisma) {
+      return res.status(500).json({ error: 'Failed to connect to database', hash: `error-db-${Date.now()}` });
+    }
+
+    // Get the latest modified date from heatmap points and types
+    const latestPoint = await prisma.heatmapDatapoint.findFirst({
+      orderBy: { lastModified: 'desc' }
+    });
+
+    const latestType = await prisma.heatmapType.findFirst({
+      orderBy: { lastModified: 'desc' }
+    });
+
+    // Generate a simple hash based on the latest modification dates
+    const pointTimestamp = latestPoint?.lastModified?.getTime() || 0;
+    const typeTimestamp = latestType?.lastModified?.getTime() || 0;
+    const timestamp = Math.max(pointTimestamp, typeTimestamp, 1);
+
+    // Return a hash based on timestamp
+    const hash = `heatmap-${timestamp}`;
+    res.json({ hash });
+  } catch (error) {
+    console.error('Error generating heatmap hash:', error);
+    res.status(500).json({ error: 'Failed to generate hash', hash: `error-server-${Date.now()}` });
+  }
+});
+
+/**
+ * Get individual heatmap type hashes for fine-grained caching
+ */
+router.get('/hashes', async (req, res) => {
+  try {
+    const prisma = await db.getPrismaClient();
+    if (!prisma) {
+      return res.status(500).json({ error: 'Failed to connect to database' });
+    }
+
+    const types = await prisma.heatmapType.findMany();
+    const hashes = {};
+
+    types.forEach(type => {
+      hashes[type.id] = type.lastModified?.getTime().toString() || Date.now().toString();
+    });
+
+    res.json({ hashes });
+  } catch (error) {
+    console.error('Error generating heatmap type hashes:', error);
+    res.status(500).json({ error: 'Failed to generate heatmap type hashes' });
   }
 });
 

@@ -21,7 +21,7 @@ const PORT = process.env.SERVER_PORT || 3000;
 
 // Enhanced CORS configuration for SSE support
 app.use(cors({
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
     // In Docker environment, allow all origins
     // Security is handled at the network level
     callback(null, true);
@@ -47,7 +47,13 @@ app.use('/api/heatmap', heatmapRouter);
 app.use('/api/listen', listenRouter);  // Primary SSE endpoint
 app.use('/api/events', eventsRouter);  // Legacy SSE endpoint for compatibility
 app.use('/api/status', statusRouter);  // Status includes health check
-app.use('/api/admin', authenticateAdmin, adminRouter); // Protected admin routes
+
+// CRITICAL: Fix the order and mounting of auth routes
+// Public auth endpoint - NO middleware
+app.use('/api/admin/auth', adminRouter);
+
+// Protected admin routes WITH authentication middleware
+app.use('/api/admin', authenticateAdmin, adminRouter);
 
 // Health route at root level for easy access
 app.get('/health', (req, res) => {
@@ -77,15 +83,15 @@ async function setupDatabaseListener() {
         data: JSON.parse(payload),
         timestamp: Date.now()
       });
-      
+
       broadcastToAll(data);
-      
+
       console.log(`Broadcast change to clients:`, payload);
     }).catch(error => {
       console.error('Database listener setup failed:', error.message);
       console.log('Server will continue without database change notifications');
     });
-    
+
     console.log('Database change listener setup complete');
   } catch (error) {
     console.error('Error setting up database listener:', error);
@@ -97,10 +103,10 @@ async function setupDatabaseListener() {
 async function ensureDatabaseTablesExist() {
   try {
     console.log("Ensuring required database tables exist...");
-    
+
     // Ensure heatmap tables exist
     const result = await ensureHeatmapTablesExist();
-    
+
     if (result.success) {
       console.log("Database tables check completed successfully");
     } else {
@@ -116,10 +122,10 @@ async function ensureDatabaseTablesExist() {
 server.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`API endpoints available at: http://localhost:${PORT}/api/`);
-  
+
   // First, ensure database tables exist
   await ensureDatabaseTablesExist();
-    
+
   // Then try to set up database listener
   try {
     await setupDatabaseListener();

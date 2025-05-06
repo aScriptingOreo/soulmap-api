@@ -44,33 +44,17 @@ router.get('/hash', async (req, res) => {
 // Get individual location hashes
 router.get('/hashes', async (req, res) => {
   try {
-    const prisma = await db.getPrismaClient();
-    if (!prisma) {
-      return res.status(500).json({ error: 'Failed to connect to database' });
-    }
-    
-    const locations = await prisma.location.findMany({
-      select: {
-        id: true,
-        name: true,
-        type: true,
-        lastModified: true
-      }
-    });
-    
-    // Create a map of location name to hash
+    const locations = await db.getAllLocations();
     const hashes = {};
-    
-    // Define disable marker constant
     const DISABLED_MARKER = '![DISABLED]';
-    
+
     locations.forEach(location => {
       // Don't include disabled locations in the hashes
       if (!location.type?.includes(DISABLED_MARKER)) {
         hashes[location.name] = location.lastModified?.getTime().toString() || Date.now().toString();
       }
     });
-    
+
     res.json({ hashes });
   } catch (error) {
     console.error('Error generating marker hashes:', error);
