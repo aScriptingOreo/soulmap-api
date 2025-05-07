@@ -16,13 +16,27 @@ const DISCORD_MANAGER_ROLE_ID = process.env.DISCORD_MANAGER_ROLE_ID || '13635885
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_BOT_ID = process.env.DISCORD_BOT_ID;
 const DISCORD_BOT_SECRET = process.env.DISCORD_BOT_SECRET;
-const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || 'https://soulmap.7thseraph.org/admin/auth/callback';
+// Fix how we handle the DISCORD_REDIRECT_URI - don't use template literals directly
+let DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || '';
+
+// If DISCORD_REDIRECT_URI contains ${DOMAIN}, manually replace it
+if (DISCORD_REDIRECT_URI.includes('${DOMAIN}')) {
+  DISCORD_REDIRECT_URI = DISCORD_REDIRECT_URI.replace('${DOMAIN}', process.env.DOMAIN || 'soulmap.7thseraph.org');
+}
+
+// If still not a valid URL, use a hardcoded default
+if (!DISCORD_REDIRECT_URI.match(/^https?:\/\/[^\/]+\//)) {
+  DISCORD_REDIRECT_URI = `https://${process.env.DOMAIN || 'soulmap.7thseraph.org'}/admin/auth/callback`;
+}
 
 // Log OAuth configuration for debugging
 console.log('Discord OAuth Configuration (using exact .env variable names):');
 console.log('- Bot/Client ID:', DISCORD_BOT_ID);
 console.log('- Bot Secret:', DISCORD_BOT_SECRET ? '[PRESENT]' : '[MISSING]');
 console.log('- Bot Token:', DISCORD_BOT_TOKEN ? '[PRESENT]' : '[MISSING]');
+console.log('- Redirect URI:', DISCORD_REDIRECT_URI);
+console.log('- Original Redirect URI from .env:', process.env.DISCORD_REDIRECT_URI);
+console.log('- Domain used:', process.env.DOMAIN);
 
 // Add middleware to log all requests to this router
 router.use((req, res, next) => {
@@ -51,6 +65,11 @@ router.post('/validate', async (req, res) => {
   const isAuthCode = token.length < 50 && !token.startsWith('ey');
 
   console.log(`Processing token as ${isAuthCode ? 'auth code' : 'access token'}`);
+  console.log('Request headers:', {
+    origin: req.headers.origin,
+    referer: req.headers.referer,
+    host: req.headers.host,
+  });
 
   try {
     let accessToken = token;
@@ -62,7 +81,7 @@ router.post('/validate', async (req, res) => {
       // Use DISCORD_BOT_SECRET from the environment
       if (!DISCORD_BOT_SECRET) {
         console.error('ERROR: Discord bot secret is missing - cannot complete OAuth flow');
-        console.log('Available env vars:', Object.keys(process.env).join(', '));
+        console.log('Available env vars:', Object.keys(process.env).filter(k => k.startsWith('DISCORD')).join(', '));
         return res.status(500).json({
           valid: false,
           message: 'Server configuration error: Discord bot secret not available',
@@ -70,11 +89,25 @@ router.post('/validate', async (req, res) => {
         });
       }
 
+      // Use the pre-processed, valid redirect URI - don't try to process it again
+      const redirectUri = DISCORD_REDIRECT_URI;
+
+      // Verify the redirect URI is valid before sending to Discord
+      if (!redirectUri.match(/^https?:\/\/[^\/]+\//)) {
+        console.error('ERROR: Invalid redirect URI format:', redirectUri);
+        return res.status(500).json({
+          valid: false,
+          message: 'Server configuration error: Invalid redirect URI format',
+          details: 'The redirect URI is not properly formatted as a valid URL'
+        });
+      }
+
       // Log the token exchange parameters for debugging
       console.log('Token Exchange Parameters:');
       console.log('- Client ID:', DISCORD_BOT_ID);
       console.log('- Client Secret:', DISCORD_BOT_SECRET ? '✓ Available' : '✗ Missing');
-      console.log('- Redirect URI:', DISCORD_REDIRECT_URI);
+      console.log('- Redirect URI:', redirectUri);
+      console.log('- Domain from env:', process.env.DOMAIN);
 
       // Create the form data with validated parameters from .env variables
       const formData = new URLSearchParams({
@@ -82,10 +115,10 @@ router.post('/validate', async (req, res) => {
         client_secret: DISCORD_BOT_SECRET,
         grant_type: 'authorization_code',
         code: token,
-        redirect_uri: DISCORD_REDIRECT_URI
+        redirect_uri: redirectUri
       });
 
-      console.log('Exchange payload (redacted):', formData.toString().replace(DISCORD_BOT_SECRET, '[REDACTED]'));
+      console.log('Exchange payload (sanitized):', formData.toString().replace(/client_secret=([^&]+)/, 'client_secret=[REDACTED]'));
 
       const tokenResponse = await fetch(`${DISCORD_API}/oauth2/token`, {
         method: 'POST',
@@ -95,13 +128,23 @@ router.post('/validate', async (req, res) => {
         body: formData
       });
 
+      // Log the raw token response status
+      console.log(`Token exchange response status: ${tokenResponse.status}`);
+
       if (!tokenResponse.ok) {
-        const errorText = await tokenResponse.text();
-        console.error('Token exchange failed:', tokenResponse.status, errorText);
+        let errorDetails = '';
+        try {
+          const errorData = await tokenResponse.text();
+          errorDetails = errorData;
+          console.error('Token exchange failed:', tokenResponse.status, errorData);
+        } catch (e) {
+          errorDetails = `Failed to read response body: ${e.message}`;
+        }
+
         return res.status(401).json({
           valid: false,
           message: 'Failed to exchange code for token',
-          details: errorText
+          details: errorDetails
         });
       }
 
@@ -189,7 +232,8 @@ router.post('/validate', async (req, res) => {
     return res.status(500).json({
       valid: false,
       message: 'Internal server error during validation',
-      details: error.message
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });

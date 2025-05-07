@@ -47,8 +47,8 @@ app.use(cors({
       `http://${domain}`,
       `https://dev.${domain}`, // Dev server
       `http://dev.${domain}`, // Dev server
-      `https://soulmap.avakot.org`,
-      `http://soulmap.avakot.org`,
+      `https://soulmap.7thseraph.org`,
+      `http://soulmap.7thseraph.org`,
       'http://localhost:5173', // Dev server
       'http://localhost:5170', // Admin dev server
       undefined, // Allow requests with no origin (like mobile apps, curl, etc)

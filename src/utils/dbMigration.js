@@ -16,23 +16,23 @@ const migrationSqlPath = path.join(__dirname, '..', '..', 'prisma', 'migrations'
  */
 export async function ensureHeatmapTablesExist() {
   let prisma = null;
-  
+
   try {
-    console.log("Checking if heatmap tables exist...");
-    
+    // console.log("Checking if heatmap tables exist...");
+
     // Create a new Prisma client
     prisma = new PrismaClient();
-    
+
     // Try to query the HeatmapType table
     try {
       await prisma.heatmapType.count();
-      console.log("Heatmap tables already exist.");
+      // console.log("Heatmap tables already exist.");
       return { success: true, message: "Tables already exist" };
     } catch (error) {
       // If error code is P2021, the table doesn't exist
       if (error.code === 'P2021') {
         console.log("Heatmap tables don't exist. Creating them...");
-        
+
         // Read the migration SQL
         let migrationSql;
         try {
@@ -41,7 +41,7 @@ export async function ensureHeatmapTablesExist() {
           console.error("Failed to read migration SQL file:", readError);
           throw new Error("Migration file not found or cannot be read");
         }
-        
+
         // Execute the SQL directly
         try {
           // Using $executeRawUnsafe to execute multiple SQL statements
@@ -49,11 +49,11 @@ export async function ensureHeatmapTablesExist() {
             .split(';') // Split by semicolon to get individual statements
             .map(stmt => stmt.trim())
             .filter(stmt => stmt.length > 0); // Remove empty statements
-            
+
           for (const statement of statements) {
             await prisma.$executeRawUnsafe(`${statement};`);
           }
-          
+
           console.log("Successfully created heatmap tables");
           return { success: true, message: "Tables created successfully" };
         } catch (sqlError) {
@@ -85,11 +85,11 @@ export async function runPrismaMigrate() {
     // Get the root directory path (2 levels up from this file)
     const rootDir = path.resolve(__dirname, '..', '..');
     const prismaPath = path.join(rootDir, 'node_modules', '.bin', 'prisma');
-    
+
     console.log("Running Prisma migrations...");
     console.log(`Command: ${prismaPath} migrate deploy`);
     console.log(`Working directory: ${rootDir}`);
-    
+
     // Execute the prisma migrate deploy command
     exec(`${prismaPath} migrate deploy`, { cwd: rootDir }, (error, stdout, stderr) => {
       if (error) {
@@ -98,7 +98,7 @@ export async function runPrismaMigrate() {
         reject(error);
         return;
       }
-      
+
       console.log(`Prisma migrate output: ${stdout}`);
       resolve({ success: true, message: "Migration completed" });
     });
