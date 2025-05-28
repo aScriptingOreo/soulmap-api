@@ -55,16 +55,34 @@ router.use((req, res, next) => {
  */
 router.post('/validate', async (req, res) => {
   console.log('Token validation request received');
-  const { token } = req.body;
+  const { token, code, grant_type } = req.body; // Destructure grant_type, code, token
 
-  if (!token) {
-    return res.status(400).json({ valid: false, message: 'Token is required' });
+  // If no grant_type provided, try to determine it based on which parameters are present
+  let effectiveGrantType = grant_type;
+  if (!effectiveGrantType) {
+    if (code) {
+      console.log('No grant_type provided but code found - assuming authorization_code');
+      effectiveGrantType = 'authorization_code';
+    } else if (token) {
+      console.log('No grant_type provided but token found - assuming access_token');
+      effectiveGrantType = 'access_token';
+    } else {
+      return res.status(400).json({ valid: false, message: 'Either code or token is required' });
+    }
   }
 
-  // Determine if this is an auth code (exchange) or access token (validation)
-  const isAuthCode = token.length < 50 && !token.startsWith('ey');
+  let effectiveToken;
+  if (effectiveGrantType === 'authorization_code') {
+    if (!code) return res.status(400).json({ valid: false, message: 'code is required for authorization_code grant_type' });
+    effectiveToken = code;
+  } else if (effectiveGrantType === 'access_token') {
+    if (!token) return res.status(400).json({ valid: false, message: 'token is required for access_token grant_type' });
+    effectiveToken = token;
+  } else {
+    return res.status(400).json({ valid: false, message: 'Invalid grant_type' });
+  }
 
-  console.log(`Processing token as ${isAuthCode ? 'auth code' : 'access token'}`);
+  console.log(`Processing grant_type: ${effectiveGrantType}`);
   console.log('Request headers:', {
     origin: req.headers.origin,
     referer: req.headers.referer,
@@ -72,10 +90,10 @@ router.post('/validate', async (req, res) => {
   });
 
   try {
-    let accessToken = token;
+    let accessToken = effectiveToken; // Initialize accessToken
 
     // If this is an auth code, exchange it for an access token first
-    if (isAuthCode) {
+    if (effectiveGrantType === 'authorization_code') {
       console.log('Exchanging auth code for access token');
 
       // Use DISCORD_BOT_SECRET from the environment
@@ -110,22 +128,22 @@ router.post('/validate', async (req, res) => {
       console.log('- Domain from env:', process.env.DOMAIN);
 
       // Create the form data with validated parameters from .env variables
-      const formData = new URLSearchParams({
+      const exchangeFormData = new URLSearchParams({ // Renamed from formData to avoid conflict
         client_id: DISCORD_BOT_ID,
         client_secret: DISCORD_BOT_SECRET,
         grant_type: 'authorization_code',
-        code: token,
+        code: effectiveToken, // Use effectiveToken which is 'code' here
         redirect_uri: redirectUri
       });
 
-      console.log('Exchange payload (sanitized):', formData.toString().replace(/client_secret=([^&]+)/, 'client_secret=[REDACTED]'));
+      console.log('Exchange payload (sanitized):', exchangeFormData.toString().replace(/client_secret=([^&]+)/, 'client_secret=[REDACTED]'));
 
       const tokenResponse = await fetch(`${DISCORD_API}/oauth2/token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: formData
+        body: exchangeFormData
       });
 
       // Log the raw token response status
@@ -149,9 +167,10 @@ router.post('/validate', async (req, res) => {
       }
 
       const tokenData = await tokenResponse.json();
-      accessToken = tokenData.access_token;
+      accessToken = tokenData.access_token; // Update accessToken with the exchanged token
       console.log('Successfully exchanged auth code for access token');
     }
+    // If grant_type is 'access_token', accessToken is already effectiveToken (the access token itself)
 
     // Fetch user information from Discord using the access token
     const userResponse = await fetch(`${DISCORD_API}/users/@me`, {

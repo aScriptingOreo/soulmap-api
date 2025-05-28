@@ -5,10 +5,17 @@ const router = express.Router();
 
 console.log('Locations router file loaded.');
 
-// Get all locations
+// Get all locations - Fixed to use Prisma directly
 router.get('/', async (req, res) => {
   try {
-    const locations = await db.getAllLocations();
+    // Get Prisma client from db helper
+    const prisma = await db.getPrismaClient();
+    if (!prisma) {
+      return res.status(500).json({ error: 'Failed to connect to database' });
+    }
+
+    // Use Prisma to get all locations
+    const locations = await prisma.location.findMany();
     res.json(locations);
   } catch (error) {
     console.error('Error fetching locations:', error);
@@ -19,7 +26,22 @@ router.get('/', async (req, res) => {
 // Get database hash
 router.get('/hash', async (req, res) => {
   try {
-    const hash = await db.generateDatabaseHash();
+    // Implement direct hash generation if db.generateDatabaseHash doesn't exist
+    const prisma = await db.getPrismaClient();
+    if (!prisma) {
+      return res.status(500).json({ error: 'Failed to connect to database' });
+    }
+    
+    // Use an aggregate to generate a timestamp hash
+    const result = await prisma.location.aggregate({
+      _max: {
+        lastModified: true
+      }
+    });
+    
+    const timestamp = result._max.lastModified?.getTime() || Date.now();
+    const hash = `loc-${timestamp}`;
+    
     res.json({ hash });
   } catch (error) {
     console.error('Error generating database hash:', error);
