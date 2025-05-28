@@ -4,6 +4,104 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 /**
+ * Heatmap API endpoints
+ */
+
+// Helper function to generate demo data
+function generateDemoData(type, count = 1000) {
+  const data = [];
+  const width = 7680;
+  const height = 6656;
+
+  // Generate random hotspots
+  const hotspots = [];
+  const numHotspots = 5;
+
+  for (let i = 0; i < numHotspots; i++) {
+    hotspots.push([
+      Math.floor(Math.random() * width),
+      Math.floor(Math.random() * height)
+    ]);
+  }
+
+  // Generate points around hotspots
+  for (let i = 0; i < count; i++) {
+    // Pick a random hotspot
+    const hotspot = hotspots[Math.floor(Math.random() * hotspots.length)];
+
+    // Create a point near the hotspot with random deviation
+    const stdDev = 500; // Standard deviation (spread)
+    const x = Math.max(0, Math.min(width, hotspot[0] + (Math.random() - 0.5) * stdDev * 2));
+    const y = Math.max(0, Math.min(height, hotspot[1] + (Math.random() - 0.5) * stdDev * 2));
+
+    // Random intensity between 0.1 and 1
+    const intensity = 0.1 + Math.random() * 0.9;
+
+    data.push([x, y, intensity]);
+  }
+
+  return data;
+}
+
+/**
+ * @route GET /api/heatmap
+ * @description Get available heatmap data types
+ * @access Public
+ */
+router.get('/', async (req, res) => {
+  try {
+    // In a real implementation, we would query the database for available types
+    const types = ['aggregated', 'deaths', 'rare', 'resources', 'enemies', 'player'];
+
+    res.json({
+      types,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error fetching heatmap types:', error);
+    res.status(500).json({ error: 'Failed to fetch heatmap types' });
+  }
+});
+
+/**
+ * @route GET /api/heatmap/:type
+ * @description Get heatmap data for a specific type
+ * @access Public
+ */
+router.get('/:type', async (req, res) => {
+  try {
+    const { type } = req.params;
+
+    // In a real implementation, we would query the database
+    let data, statistics;
+
+    // For now, generate demo data
+    const pointCount = type === 'aggregated' ? 2000 : 1000;
+    data = generateDemoData(type, pointCount);
+
+    // Generate demo statistics
+    statistics = {
+      count: data.length,
+      avgIntensity: 0.5,
+      maxIntensity: 1.0,
+      minIntensity: 0.1
+    };
+
+    // Return the data with metadata
+    res.json({
+      data,
+      type,
+      timestamp: new Date().toISOString(),
+      types: ['aggregated', 'deaths', 'rare', 'resources', 'enemies', 'player'],
+      statistics
+    });
+  } catch (error) {
+    console.error(`Error fetching ${req.params.type} heatmap data:`, error);
+    res.status(500).json({ error: `Failed to fetch ${req.params.type} heatmap data` });
+  }
+});
+
+/**
  * Get all heatmap datapoints with their associated types
  */
 router.get('/datapoints', async (req, res) => {

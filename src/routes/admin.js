@@ -324,16 +324,34 @@ router.get('/locations/:id', async (req, res) => {
 router.post('/locations', async (req, res) => {
   console.log('POST /locations handler reached.'); // Add this log
   // Ensure coordinates are handled correctly
-  const { coordinates, ...restData } = req.body;
+  const { coordinates, id, ...restData } = req.body; // Remove id field explicitly
 
   const data = { ...restData };
 
   // Handle coordinates based on your schema (assuming JSON for flexibility)
-  if (coordinates && Array.isArray(coordinates)) {
-    data.coordinates = coordinates;
+  if (coordinates) {
+    // Log the raw coordinates for debugging
+    console.log('Raw coordinates received:', JSON.stringify(coordinates));
+
+    if (Array.isArray(coordinates)) {
+      // Check if we have a single coordinate pair [x, y] vs multiple coordinates [[x,y], [x,y]]
+      if (coordinates.length === 2 && typeof coordinates[0] === 'number' && typeof coordinates[1] === 'number') {
+        // Single coordinate pair - store as [x, y] directly
+        console.log('Detected single coordinate pair - storing as flat array:', coordinates);
+        data.coordinates = coordinates;
+      } else {
+        // Multiple coordinates or other format - store as received
+        console.log('Detected multiple coordinates or complex format - storing as is');
+        data.coordinates = coordinates;
+      }
+    } else {
+      console.log('Coordinates not in expected array format, using default');
+      data.coordinates = [0, 0]; // Default if not in expected format
+    }
   } else {
-    // Provide a default if coordinates are missing or invalid
-    data.coordinates = [[0, 0]];
+    // Provide a default if coordinates are missing
+    console.log('No coordinates provided, using default');
+    data.coordinates = [0, 0];
   }
 
   // Add default values or handle missing optional fields if necessary
@@ -352,14 +370,28 @@ router.post('/locations', async (req, res) => {
       return res.status(500).json({ error: 'Failed to connect to database' });
     }
 
+    console.log('Creating location with data:', JSON.stringify(data, null, 2)); // Print formatted data
+
     const newLocation = await prisma.location.create({
       data,
     });
-    console.log('Location created successfully:', newLocation.id); // Add success log
+    console.log('Location created successfully with ID:', newLocation.id); // Add success log with ID
     res.status(201).json(newLocation); // Use 201 Created status
   } catch (error) {
     console.error('Error creating location:', error.message || error);
-    res.status(500).json({ error: 'Failed to create location' });
+
+    // Add more detailed error information for debugging
+    if (error.code) {
+      console.error(`Prisma error code: ${error.code}`);
+    }
+
+    // Provide more useful error message to client
+    let errorMessage = 'Failed to create location';
+    if (error.message && error.message.includes('Argument `id` must not be null')) {
+      errorMessage += ': ID field should not be included for new locations';
+    }
+
+    res.status(500).json({ error: errorMessage });
   }
 });
 
@@ -370,16 +402,34 @@ router.post('/locations/new', async (req, res) => {
   console.log('POST /locations/new handler reached.'); // Log for debugging
 
   // Ensure coordinates are handled correctly
-  const { coordinates, ...restData } = req.body;
+  const { coordinates, id, ...restData } = req.body; // Remove id field explicitly
 
   const data = { ...restData };
 
   // Handle coordinates based on your schema
-  if (coordinates && Array.isArray(coordinates)) {
-    data.coordinates = coordinates;
+  if (coordinates) {
+    // Log the raw coordinates for debugging
+    console.log('Raw coordinates received:', JSON.stringify(coordinates));
+
+    if (Array.isArray(coordinates)) {
+      // Check if we have a single coordinate pair [x, y] vs multiple coordinates [[x,y], [x,y]]
+      if (coordinates.length === 2 && typeof coordinates[0] === 'number' && typeof coordinates[1] === 'number') {
+        // Single coordinate pair - store as [x, y] directly
+        console.log('Detected single coordinate pair - storing as flat array:', coordinates);
+        data.coordinates = coordinates;
+      } else {
+        // Multiple coordinates or other format - store as received
+        console.log('Detected multiple coordinates or complex format - storing as is');
+        data.coordinates = coordinates;
+      }
+    } else {
+      console.log('Coordinates not in expected array format, using default');
+      data.coordinates = [0, 0]; // Default if not in expected format
+    }
   } else {
-    // Provide a default if coordinates are missing or invalid
-    data.coordinates = [[0, 0]];
+    // Provide a default if coordinates are missing
+    console.log('No coordinates provided, using default');
+    data.coordinates = [0, 0];
   }
 
   // Add default values or handle missing optional fields
@@ -392,7 +442,7 @@ router.post('/locations/new', async (req, res) => {
   data.exactCoordinates = data.exactCoordinates ?? null;
 
   try {
-    console.log('Creating new location with data:', data);
+    console.log('Creating new location with data:', JSON.stringify(data, null, 2));
     const prisma = await db.getPrismaClient();
     if (!prisma) {
       return res.status(500).json({ error: 'Failed to connect to database' });
@@ -405,7 +455,12 @@ router.post('/locations/new', async (req, res) => {
     res.status(201).json(newLocation);
   } catch (error) {
     console.error('Error creating location:', error);
-    res.status(500).json({ error: 'Failed to create location' });
+    // Add better error message with details
+    let errorMessage = 'Failed to create location';
+    if (error.message) {
+      errorMessage += `: ${error.message}`;
+    }
+    res.status(500).json({ error: errorMessage });
   }
 });
 
@@ -419,24 +474,26 @@ router.put('/locations/:id', async (req, res) => {
 
   const data = { ...restData };
 
-  // Prisma expects coordinates in a specific format if it's a Point type.
-  // If your schema uses simple arrays or JSON, adjust accordingly.
-  // Assuming 'coordinates' might be sent and needs potential transformation:
-  if (coordinates && Array.isArray(coordinates)) {
-    // If your schema expects a JSON field or similar:
-    // data.coordinates = coordinates; 
+  // Handle coordinates if provided in the update
+  if (coordinates) {
+    // Log the raw coordinates for debugging
+    console.log('Raw coordinates received in update:', JSON.stringify(coordinates));
 
-    // If your schema expects separate lat/lon or x/y fields, map them here.
-    // Example for separate fields:
-    // if (coordinates.length === 2) {
-    //   data.latitude = coordinates[1]; // Assuming [lon, lat] or [x, y]
-    //   data.longitude = coordinates[0];
-    // }
-
-    // If using PostGIS Point type, Prisma might handle array directly or need specific structure.
-    // Consult Prisma docs for your specific database type (e.g., PostGIS).
-    // For now, let's assume it's handled directly or stored as JSON/Array
-    data.coordinates = coordinates;
+    if (Array.isArray(coordinates)) {
+      // Check if we have a single coordinate pair [x, y] vs multiple coordinates [[x,y], [x,y]]
+      if (coordinates.length === 2 && typeof coordinates[0] === 'number' && typeof coordinates[1] === 'number') {
+        // Single coordinate pair - store as [x, y] directly
+        console.log('Detected single coordinate pair in update - storing as flat array:', coordinates);
+        data.coordinates = coordinates;
+      } else {
+        // Multiple coordinates or other format - store as received
+        console.log('Detected multiple coordinates or complex format in update - storing as is');
+        data.coordinates = coordinates;
+      }
+    } else {
+      console.log('Coordinates in update not in expected array format, ignoring');
+      // In updates, we don't set a default, just ignore invalid coordinates
+    }
   }
 
   try {
@@ -1195,6 +1252,193 @@ router.post('/heatmap/datapoints/cleanup', async (req, res) => {
   } catch (error) {
     console.error('Error cleaning up orphaned datapoints:', error);
     res.status(500).json({ error: 'Failed to clean up orphaned datapoints' });
+  }
+});
+
+/**
+ * Category management endpoints
+ */
+
+// Get all category defaults
+router.get('/categories/defaults', async (req, res) => {
+  try {
+    console.log('Fetching category defaults');
+
+    // Directly use db.getPrismaClient() instead of relying on the helper function
+    // This gives us more control over error handling
+    const prisma = await db.getPrismaClient();
+    if (!prisma) {
+      console.error('Failed to connect to database for category defaults');
+      return res.status(500).json({ error: 'Failed to connect to database' });
+    }
+
+    // Safely query the CategoryDefaults model
+    try {
+      const defaults = await prisma.categoryDefaults.findMany({
+        orderBy: {
+          sortOrder: 'asc'
+        }
+      });
+
+      console.log(`Successfully fetched ${defaults.length} category defaults`);
+      res.json(defaults);
+    } catch (prismaError) {
+      // Check for specific Prisma errors
+      console.error('Prisma error fetching category defaults:', prismaError);
+
+      // Check if the table might not exist (P2010 error) or other schema issues
+      if (prismaError.code === 'P2010' || prismaError.code === 'P2021') {
+        // Return empty array instead of error to prevent UI issues
+        console.log('Returning empty array due to schema issue');
+        return res.json([]);
+      }
+
+      throw prismaError; // Let the outer catch handle other errors
+    }
+  } catch (error) {
+    console.error('Error fetching category defaults:', error);
+
+    // Return an empty array instead of an error to prevent UI issues
+    // This is a more graceful failure that won't break the admin UI
+    res.json([]);
+  }
+});
+
+// Save category default
+router.post('/categories/defaults', async (req, res) => {
+  try {
+    const categoryDefault = req.body;
+
+    if (!categoryDefault.path) {
+      return res.status(400).json({ error: 'Category path is required' });
+    }
+
+    const result = await db.saveCategoryDefault(categoryDefault);
+    res.json(result);
+  } catch (error) {
+    console.error('Error saving category default:', error);
+    res.status(500).json({ error: 'Failed to save category default' });
+  }
+});
+
+// Delete category default
+router.delete('/categories/defaults', async (req, res) => {
+  try {
+    const { path } = req.body;
+
+    if (!path) {
+      return res.status(400).json({ error: 'Category path is required' });
+    }
+
+    await db.deleteCategoryDefault(path);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting category default:', error);
+    res.status(500).json({ error: 'Failed to delete category default' });
+  }
+});
+
+// Get unique categories from locations
+router.get('/categories/unique', async (req, res) => {
+  try {
+    const prisma = await db.getPrismaClient();
+    if (!prisma) {
+      return res.status(500).json({ error: 'Failed to connect to database' });
+    }
+
+    // Get all locations to extract unique categories
+    const locations = await prisma.location.findMany({
+      select: {
+        type: true
+      }
+    });
+
+    // Extract and normalize categories
+    const categoriesSet = new Set();
+    locations.forEach(location => {
+      if (!location.type) return;
+
+      // Normalize path to ensure it starts with a slash
+      let path = location.type;
+      if (!path.startsWith('/')) {
+        path = `/${path}`;
+      }
+
+      // Add the path itself
+      categoriesSet.add(path);
+
+      // Add all parent paths
+      const segments = path.split('/').filter(Boolean);
+      let currentPath = '';
+      segments.forEach(segment => {
+        currentPath += `/${segment}`;
+        categoriesSet.add(currentPath);
+      });
+    });
+
+    // Convert set to sorted array
+    const categories = Array.from(categoriesSet).sort();
+
+    res.json(categories);
+  } catch (error) {
+    console.error('Error fetching unique categories:', error);
+    res.status(500).json({ error: 'Failed to fetch unique categories' });
+  }
+});
+
+// Toggle location visibility (by adding/removing DISABLED marker)
+router.put('/locations/:id/visibility', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { visible } = req.body;
+
+    if (visible === undefined) {
+      return res.status(400).json({ error: 'Visibility parameter is required' });
+    }
+
+    const prisma = await db.getPrismaClient();
+    if (!prisma) {
+      return res.status(500).json({ error: 'Failed to connect to database' });
+    }
+
+    // Get the current location
+    const location = await prisma.location.findUnique({
+      where: { id }
+    });
+
+    if (!location) {
+      return res.status(404).json({ error: 'Location not found' });
+    }
+
+    // Update the type field based on visibility
+    // Define the DISABLED marker
+    const DISABLED_MARKER = '![DISABLED]';
+
+    let updatedType = location.type;
+    if (visible && updatedType.includes(DISABLED_MARKER)) {
+      // Remove the disabled marker
+      updatedType = updatedType.replace(DISABLED_MARKER, '').trim();
+    } else if (!visible && !updatedType.includes(DISABLED_MARKER)) {
+      // Add the disabled marker
+      updatedType = `${DISABLED_MARKER} ${updatedType}`;
+    }
+
+    // Update the location
+    const updatedLocation = await prisma.location.update({
+      where: { id },
+      data: {
+        type: updatedType
+      }
+    });
+
+    res.json({
+      id: updatedLocation.id,
+      type: updatedLocation.type,
+      visible: !updatedLocation.type.includes(DISABLED_MARKER)
+    });
+  } catch (error) {
+    console.error('Error toggling location visibility:', error);
+    res.status(500).json({ error: 'Failed to toggle location visibility' });
   }
 });
 

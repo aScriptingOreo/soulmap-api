@@ -13,7 +13,7 @@ model Location {
   name            String
   coordinates     Json     // Stores either [number, number] or array of coordinates
   description     String
-  type            String   // Category (previously subdirectory)
+  type            String   // Category path with slashes (e.g., "/Fable/Quests/Tuvalkane")
   icon            String?
   iconSize        Float?
   mediaUrl        Json?    // Can be a string or array of strings
@@ -24,11 +24,24 @@ model Location {
   lore            String?  @db.Text
   spoilers        String?  @db.Text
   noCluster       Boolean? @default(false)
-  exactCoordinates Json?   // Removed underscore prefix
+  exactCoordinates Json?   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   submittedBy     String?  // Discord user ID who submitted this location
   approvedBy      String?  // Discord user ID of admin who approved the location
+}
+
+// Category defaults model to store visibility preferences
+model CategoryDefaults {
+  id              String   @id @default(uuid())
+  path            String   @unique // Full path of the category (e.g., "/Fable/Quests")
+  visible         Boolean  @default(true) // Whether this category is visible by default
+  expanded        Boolean  @default(true) // Whether this category is expanded by default
+  displayName     String?  // Optional custom display name for the category
+  iconPath        String?  // Optional icon for the category
+  sortOrder       Int      @default(0) // Sort order for the category
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 // Heatmap Data Points
