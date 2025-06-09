@@ -53,6 +53,16 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 """
 scalar DateTime
 
+type Icon {
+  category: String!
+  createdAt: DateTime!
+  id: ID!
+  name: String!
+  path: String!
+  size: Float
+  url: String!
+}
+
 type Location {
   category: Category!
   coordinates: [Coordinate!]
@@ -77,6 +87,9 @@ type Mutation {
 
   "\n      Create a new location. Examples for coordinates:\n      - Single marker: [37.7749, -122.4194]\n      - Multiple markers: [[37.7749, -122.4194], [40.7128, -74.0060], [34.0522, -118.2437]]\n      Requires API key in x-api-key header.\n    "
   createLocation(createLocationInput: CreateLocationInput!): Location!
+
+  """Refresh the icon index from S3"""
+  refreshIconIndex: Boolean!
   removeCategory(id: ID!): Boolean!
   removeLocation(id: ID!): Boolean!
   updateCategory(updateCategoryInput: UpdateCategoryInput!): Category!
@@ -87,9 +100,24 @@ type Query {
   categories: [Category!]!
   category(id: ID!): Category!
   changelog: [Changelog!]!
+
+  """Get icon by ID"""
+  icon(id: String!): Icon
+
+  """Get all icon categories"""
+  iconCategories: [String!]!
+
+  """Get all icons from the S3 bucket"""
+  icons: [Icon!]!
+
+  """Get icons by category"""
+  iconsByCategory(category: String!): [Icon!]!
   location(id: ID!): Location!
   locations: [Location!]!
   recentChanges(limit: Int!): [Changelog!]!
+
+  """Search icons by name, category, or path"""
+  searchIcons(query: String!): [Icon!]!
 }
 
 input UpdateCategoryInput {

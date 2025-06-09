@@ -10,6 +10,7 @@ import { DiscordModule } from './discord/discord.module';
 import { LocationsModule } from './locations/locations.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ChangelogModule } from './changelog/changelog.module';
+import { IconsModule } from './icons/icons.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ChangelogModule } from './changelog/changelog.module';
     LocationsModule,
     CategoriesModule,
     ChangelogModule,
+    IconsModule,
   ],
 })
 export class AppModule {}
