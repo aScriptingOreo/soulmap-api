@@ -11,12 +11,15 @@ import { LocationsModule } from './locations/locations.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ChangelogModule } from './changelog/changelog.module';
 import { IconsModule } from './icons/icons.module';
+import { S3Module } from './s3/s3.module';
+import { MapsModule } from './maps/maps.module';
 
 @Module({
   imports: [
     ConfigModule,
     DatabaseModule,
     RedisModule,
+    S3Module,
     DiscordModule,
     AuthModule,
     GraphQLModule.forRoot<ApolloDriverConfig>({
@@ -30,6 +33,7 @@ import { IconsModule } from './icons/icons.module';
     CategoriesModule,
     ChangelogModule,
     IconsModule,
+    MapsModule,
   ],
 })
 export class AppModule {}
