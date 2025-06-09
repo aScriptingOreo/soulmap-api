@@ -1,0 +1,139 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type Category {
+  categoryName: String!
+  hiddenByDefault: Boolean!
+  id: String!
+}
+
+type Changelog {
+  changeType: String!
+  id: Int!
+  modifiedBy: String!
+  timestamp: DateTime!
+}
+
+input CreateCategoryInput {
+  categoryName: String!
+  hiddenByDefault: Boolean = false
+}
+
+input CreateChangelogInput {
+  changeType: String!
+  modifiedBy: String!
+}
+
+input CreateLocationInput {
+  """Category name - will be created if it does not exist"""
+  categoryName: String
+  cluster: Boolean = true
+
+  """
+  Leaflet coordinates: [X,Y] for a single marker or [[X,Y],[X1,Y1],...] for multiple markers with the same properties
+  """
+  coordinates: JSON
+  createdBy: String
+  data: String
+  description: String
+  icon: String
+  iconColor: String
+  iconSize: Float
+  locationName: String!
+  mediaUrl: String
+  radius: Float
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+"""
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSON
+
+type Location {
+  category: Category
+  cluster: Boolean!
+
+  """
+  Leaflet coordinates: [X,Y] for a single marker or [[X,Y],[X1,Y1],...] for multiple markers with the same properties
+  """
+  coordinates: JSON!
+  createdAt: DateTime!
+  createdBy: String
+  data: String
+  description: String
+  icon: String
+  iconColor: String
+  iconSize: Float
+  id: String!
+  lastUpdateBy: String
+  locationName: String!
+  mediaUrl: String
+  radius: Float
+  updatedAt: DateTime!
+}
+
+type Mutation {
+  createCategory(createCategoryInput: CreateCategoryInput!): Category!
+  createChangelogEntry(createChangelogInput: CreateChangelogInput!): Changelog!
+
+  "\n      Create a new location. Examples for coordinates:\n      - Single marker: [37.7749, -122.4194]\n      - Multiple markers: [[37.7749, -122.4194], [40.7128, -74.0060], [34.0522, -118.2437]]\n      Requires API key in x-api-key header.\n    "
+  createLocation(createLocationInput: CreateLocationInput!): Location!
+  removeCategory(id: ID!): Boolean!
+  removeLocation(id: ID!): Boolean!
+  updateCategory(updateCategoryInput: UpdateCategoryInput!): Category!
+  updateLocation(updateLocationInput: UpdateLocationInput!): Location!
+}
+
+input NearbyLocationInput {
+  """Latitude (Y coordinate in Leaflet)"""
+  latitude: Float!
+
+  """Longitude (X coordinate in Leaflet)"""
+  longitude: Float!
+
+  """Radius in kilometers"""
+  radius: Float!
+}
+
+type Query {
+  categories: [Category!]!
+  category(id: ID!): Category!
+  changelog: [Changelog!]!
+  location(id: ID!): Location!
+  locations: [Location!]!
+  nearbyLocations(nearbyInput: NearbyLocationInput!): [Location!]!
+  recentChanges(limit: Int!): [Changelog!]!
+}
+
+input UpdateCategoryInput {
+  categoryName: String
+  hiddenByDefault: Boolean
+  id: ID!
+}
+
+input UpdateLocationInput {
+  """Category name - will be created if it does not exist"""
+  categoryName: String
+  cluster: Boolean
+
+  """
+  Leaflet coordinates: [X,Y] for a single marker or [[X,Y],[X1,Y1],...] for multiple markers with the same properties
+  """
+  coordinates: JSON
+  data: String
+  description: String
+  icon: String
+  iconColor: String
+  iconSize: Float
+  id: ID!
+  lastUpdateBy: String
+  locationName: String
+  mediaUrl: String
+  radius: Float
+}
