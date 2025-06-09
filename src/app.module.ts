@@ -13,10 +13,22 @@ import { ChangelogModule } from './changelog/changelog.module';
 import { IconsModule } from './icons/icons.module';
 import { S3Module } from './s3/s3.module';
 import { MapsModule } from './maps/maps.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
   imports: [
     ConfigModule,
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: process.env.PG_HOST || 'localhost',
+      port: parseInt(process.env.PG_PORT || '5432', 10),
+      username: process.env.PG_U || 'postgres',
+      password: process.env.PG_P || 'postgres',
+      database: process.env.PG_DB || 'soulmap',
+      autoLoadEntities: true,
+      synchronize: true,
+      logging: true,
+    }),
     DatabaseModule,
     RedisModule,
     S3Module,
@@ -26,8 +38,8 @@ import { MapsModule } from './maps/maps.module';
       driver: ApolloDriver,
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       sortSchema: true,
-      playground: true, // Enable GraphQL playground
-      context: ({ req }) => ({ req }), // Pass request to context for guards
+      playground: true,
+      context: ({ req }) => ({ req }),
     }),
     LocationsModule,
     CategoriesModule,
