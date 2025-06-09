@@ -3,14 +3,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { LocationsService } from './locations.service';
 import { LocationsResolver } from './locations.resolver';
 import { Location } from './location.entity';
-import { CategoriesModule } from '../categories/categories.module';
+import { Category } from '../categories/category.entity';
 import { AuthModule } from '../auth/auth.module';
 import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Location]),
-    CategoriesModule,
+    TypeOrmModule.forFeature([Location, Category]),
     AuthModule,
     RedisModule
   ],

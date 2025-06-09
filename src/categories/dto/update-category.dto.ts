@@ -1,11 +1,10 @@
 import { InputType, Field, ID } from '@nestjs/graphql';
-import { IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsBoolean } from 'class-validator';
 
 @InputType()
 export class UpdateCategoryInput {
   @Field(() => ID)
   @IsNotEmpty()
-  @IsUUID()
   id: string;
 
   @Field({ nullable: true })
@@ -14,5 +13,10 @@ export class UpdateCategoryInput {
 
   @Field({ nullable: true })
   @IsOptional()
+  @IsBoolean()
   hiddenByDefault?: boolean;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  path?: string; // New: Category path
 }

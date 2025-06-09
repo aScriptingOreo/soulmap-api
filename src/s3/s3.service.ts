@@ -783,19 +783,4 @@ export class S3Service {
       size: file.size
     }));
   }
-
-  // Basic S3 service implementation
-  async getObject(key: string): Promise<any> {
-    // Basic implementation
-    return null;
-  }
-
-  async putObject(key: string, data: Buffer): Promise<void> {
-    // Basic implementation
-  }
-
-  async listObjects(prefix?: string): Promise<any[]> {
-    // Basic implementation
-    return [];
-  }
 }

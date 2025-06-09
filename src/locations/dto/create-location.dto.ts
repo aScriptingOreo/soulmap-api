@@ -1,14 +1,13 @@
-import { InputType, Field, Float } from '@nestjs/graphql';
-import { IsString, IsOptional, IsBoolean, IsNumber, IsArray, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { InputType, Field } from '@nestjs/graphql';
+import { IsNotEmpty, IsOptional, IsArray, IsNumber, IsBoolean, IsString } from 'class-validator';
 
 @InputType()
 export class CoordinateInput {
-  @Field(() => Float)
+  @Field()
   @IsNumber()
   x: number;
 
-  @Field(() => Float)
+  @Field()
   @IsNumber()
   y: number;
 }
@@ -16,51 +15,45 @@ export class CoordinateInput {
 @InputType()
 export class CreateLocationInput {
   @Field()
-  @IsString()
+  @IsNotEmpty()
   locationName: string;
 
   @Field({ nullable: true })
   @IsOptional()
-  @IsString()
   description?: string;
 
   @Field(() => [CoordinateInput], { nullable: true })
   @IsOptional()
   @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => CoordinateInput)
   coordinates?: CoordinateInput[];
 
   @Field()
-  @IsString()
-  category: string;
+  @IsNotEmpty()
+  category: string; // Category ID
 
   @Field({ nullable: true })
   @IsOptional()
-  @IsString()
   icon?: string;
 
-  @Field(() => Float, { nullable: true })
+  @Field({ nullable: true })
   @IsOptional()
   @IsNumber()
   iconSize?: number;
 
   @Field({ nullable: true })
   @IsOptional()
-  @IsString()
   mediaUrl?: string;
 
   @Field({ nullable: true })
   @IsOptional()
-  @IsString()
   iconColor?: string;
 
-  @Field(() => Float, { nullable: true })
+  @Field({ nullable: true })
   @IsOptional()
   @IsNumber()
   radius?: number;
 
-  @Field({ defaultValue: false })
+  @Field({ nullable: true })
   @IsOptional()
   @IsBoolean()
   noCluster?: boolean;
