@@ -4,13 +4,13 @@ import {
   Mutation,
   Args,
   ID,
+  Context,
 } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import { LocationsService } from './locations.service';
 import { Location } from './location.entity';
 import { CreateLocationInput } from './dto/create-location.input';
 import { UpdateLocationInput } from './dto/update-location.input';
-import { NearbyLocationInput } from './dto/nearby-location.input';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Resolver(() => Location)
@@ -29,14 +29,6 @@ export class LocationsResolver {
     return this.locationsService.findOne(id);
   }
 
-  @Query(() => [Location])
-  async nearbyLocations(
-    @Args('nearbyInput') nearbyInput: NearbyLocationInput,
-  ): Promise<Location[]> {
-    const { longitude, latitude, radius } = nearbyInput;
-    return this.locationsService.findNearby(longitude, latitude, radius);
-  }
-
   @Mutation(() => Location, {
     description: `
       Create a new location. Examples for coordinates:
@@ -48,19 +40,22 @@ export class LocationsResolver {
   @UseGuards(JwtAuthGuard)
   async createLocation(
     @Args('createLocationInput') createLocationInput: CreateLocationInput,
+    @Context() context: any,
   ): Promise<Location> {
-    return this.locationsService.create(createLocationInput);
+    const userId = context.req.user.userId; // Get from JWT payload
+    console.log('Creating location with input:', createLocationInput);
+    console.log('User ID:', userId);
+    return this.locationsService.create(createLocationInput, userId);
   }
 
   @Mutation(() => Location)
   @UseGuards(JwtAuthGuard)
   async updateLocation(
     @Args('updateLocationInput') updateLocationInput: UpdateLocationInput,
+    @Context() context: any,
   ): Promise<Location> {
-    return this.locationsService.update(
-      updateLocationInput.id,
-      updateLocationInput,
-    );
+    const userId = context.req.user.userId; // Get from JWT payload
+    return this.locationsService.update(updateLocationInput.id, updateLocationInput, userId);
   }
 
   @Mutation(() => Boolean)

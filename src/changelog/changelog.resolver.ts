@@ -4,6 +4,7 @@ import {
   Mutation,
   Args,
   Int,
+  Context,
 } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import { ChangelogService } from './changelog.service';
@@ -31,8 +32,10 @@ export class ChangelogResolver {
   @UseGuards(JwtAuthGuard)
   async createChangelogEntry(
     @Args('createChangelogInput') createChangelogInput: CreateChangelogInput,
+    @Context() context: any,
   ): Promise<Changelog> {
-    const entry = await this.changelogService.create(createChangelogInput);
+    const userId = context.req.user.userId; // Get from JWT payload
+    const entry = await this.changelogService.create(createChangelogInput, userId);
     return entry;
   }
 }

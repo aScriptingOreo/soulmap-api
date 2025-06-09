@@ -1,61 +1,65 @@
-import { Field, ObjectType, Float } from '@nestjs/graphql';
+import { ObjectType, Field, ID, Float } from '@nestjs/graphql';
 import {
   Entity,
-  Column,
   PrimaryGeneratedColumn,
+  Column,
   ManyToOne,
-  JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  JoinColumn,
 } from 'typeorm';
 import { Category } from '../categories/category.entity';
-import { GraphQLJSON } from 'graphql-type-json';
+
+@ObjectType()
+export class Coordinate {
+  @Field(() => Float)
+  x: number;
+
+  @Field(() => Float)
+  y: number;
+}
 
 @ObjectType()
 @Entity('locations')
 export class Location {
-  @Field()
+  @Field(() => ID)
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Field()
-  @Column({ name: 'locationName', type: 'text' })
+  @Column({ name: 'locationname' })
   locationName: string;
-
-  @Field(() => GraphQLJSON, {
-    description:
-      'Leaflet coordinates: [X,Y] for a single marker or [[X,Y],[X1,Y1],...] for multiple markers with the same properties',
-  })
-  @Column({ type: 'jsonb', nullable: true })
-  coordinates: number[] | number[][];
 
   @Field({ nullable: true })
   @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Field(() => Category, { nullable: true })
-  @ManyToOne(() => Category, { eager: true, nullable: true })
+  @Field(() => [Coordinate], { nullable: true })
+  @Column({ type: 'jsonb', nullable: true })
+  coordinates?: Coordinate[];
+
+  @Field(() => Category)
+  @ManyToOne(() => Category)
   @JoinColumn({ name: 'category' })
-  category?: Category;
+  category: Category;
+
+  @Column({ name: 'category' })
+  categoryId: string;
 
   @Field({ nullable: true })
   @Column({ type: 'text', nullable: true })
   icon?: string;
 
-  @Field(() => String, { nullable: true })
-  @Column({ type: 'jsonb', nullable: true })
-  data?: object;
-
   @Field(() => Float, { nullable: true })
-  @Column({ type: 'float', nullable: true })
+  @Column({ type: 'float', name: 'iconsize', nullable: true })
   iconSize?: number;
 
   @Field({ nullable: true })
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', name: 'mediaurl', nullable: true })
   mediaUrl?: string;
 
   @Field({ nullable: true })
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', name: 'iconcolor', nullable: true })
   iconColor?: string;
 
   @Field(() => Float, { nullable: true })
@@ -63,22 +67,22 @@ export class Location {
   radius?: number;
 
   @Field()
-  @Column({ type: 'boolean', default: true })
-  cluster: boolean;
+  @Column({ type: 'boolean', name: 'nocluster', default: false })
+  noCluster: boolean;
 
   @Field({ nullable: true })
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', name: 'createdby', nullable: true })
   createdBy?: string;
 
   @Field({ nullable: true })
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', name: 'lastupdateby', nullable: true })
   lastUpdateBy?: string;
 
   @Field()
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ name: 'createdat' })
   createdAt: Date;
 
   @Field()
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ name: 'updatedat' })
   updatedAt: Date;
 }

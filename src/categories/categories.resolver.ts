@@ -33,8 +33,8 @@ export class CategoriesResolver {
   async createCategory(
     @Args('createCategoryInput') createCategoryInput: CreateCategoryInput,
   ): Promise<Category> {
-    const category = await this.categoriesService.create(createCategoryInput);
-    return category;
+    console.log('Creating category with input:', createCategoryInput);
+    return this.categoriesService.create(createCategoryInput);
   }
 
   @Mutation(() => Category)

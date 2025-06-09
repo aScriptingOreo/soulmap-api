@@ -1,58 +1,67 @@
 import { InputType, Field, Float } from '@nestjs/graphql';
-import { IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
-import { GraphQLJSON } from 'graphql-type-json';
+import { IsString, IsOptional, IsBoolean, IsNumber, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+
+@InputType()
+export class CoordinateInput {
+  @Field(() => Float)
+  @IsNumber()
+  x: number;
+
+  @Field(() => Float)
+  @IsNumber()
+  y: number;
+}
 
 @InputType()
 export class CreateLocationInput {
   @Field()
-  @IsNotEmpty()
+  @IsString()
   locationName: string;
 
-  @Field(() => GraphQLJSON, {
-    nullable: true,
-    description:
-      'Leaflet coordinates: [X,Y] for a single marker or [[X,Y],[X1,Y1],...] for multiple markers with the same properties',
-  })
-  @IsOptional()
-  coordinates?: number[] | number[][];
-
   @Field({ nullable: true })
   @IsOptional()
+  @IsString()
   description?: string;
 
-  @Field({ nullable: true, description: 'Category name - will be created if it does not exist' })
+  @Field(() => [CoordinateInput], { nullable: true })
   @IsOptional()
-  categoryName?: string;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CoordinateInput)
+  coordinates?: CoordinateInput[];
+
+  @Field()
+  @IsString()
+  category: string;
 
   @Field({ nullable: true })
   @IsOptional()
+  @IsString()
   icon?: string;
-
-  @Field(() => String, { nullable: true })
-  @IsOptional()
-  data?: Record<string, any>;
 
   @Field(() => Float, { nullable: true })
   @IsOptional()
+  @IsNumber()
   iconSize?: number;
 
   @Field({ nullable: true })
   @IsOptional()
+  @IsString()
   mediaUrl?: string;
 
   @Field({ nullable: true })
   @IsOptional()
+  @IsString()
   iconColor?: string;
 
   @Field(() => Float, { nullable: true })
   @IsOptional()
+  @IsNumber()
   radius?: number;
 
-  @Field({ nullable: true, defaultValue: true })
+  @Field({ defaultValue: false })
   @IsOptional()
-  cluster?: boolean;
-
-  @Field({ nullable: true })
-  @IsOptional()
-  createdBy?: string;
+  @IsBoolean()
+  noCluster?: boolean;
 }

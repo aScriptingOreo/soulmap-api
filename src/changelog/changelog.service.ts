@@ -41,8 +41,11 @@ export class ChangelogService {
     return changes;
   }
 
-  async create(changelogData: Partial<Changelog>): Promise<Changelog> {
-    const newEntry = this.changelogRepository.create(changelogData);
+  async create(changelogData: Partial<Changelog>, userId: string): Promise<Changelog> {
+    const newEntry = this.changelogRepository.create({
+      ...changelogData,
+      modifiedBy: userId, // Set from authenticated user
+    });
     const savedEntry = await this.changelogRepository.save(newEntry);
 
     // Invalidate recent changelog cache with different limits

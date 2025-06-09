@@ -82,21 +82,23 @@ export class CategoriesService {
     });
   }
 
-  async findOrCreateByName(categoryName: string): Promise<Category> {
-    // First try to find existing category
-    let category = await this.findByName(categoryName);
+  async findOrCreate(categoryName: string): Promise<Category> {
+    // Try to find existing category
+    let category = await this.categoriesRepository.findOne({
+      where: { categoryName },
+    });
 
-    if (!category) {
-      // Create new category if it doesn't exist
-      category = await this.create({ categoryName });
-
-      // Log category creation for audit purposes
-      console.log(
-        `Created new category: ${categoryName} with ID: ${category.id}`,
-      );
+    if (category) {
+      return category;
     }
 
-    return category;
+    // Create new category if not found
+    const newCategory = this.categoriesRepository.create({
+      categoryName,
+      hiddenByDefault: false,
+    });
+
+    return this.categoriesRepository.save(newCategory);
   }
 
   async getDefaultCategory(): Promise<Category> {

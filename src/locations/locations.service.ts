@@ -2,189 +2,215 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Location } from './location.entity';
-import { RedisService } from '../redis/redis.service';
-import { CategoriesService } from '../categories/categories.service';
 import { CreateLocationInput } from './dto/create-location.input';
 import { UpdateLocationInput } from './dto/update-location.input';
+import { Category } from '../categories/category.entity';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class LocationsService {
   constructor(
     @InjectRepository(Location)
     private locationsRepository: Repository<Location>,
+    @InjectRepository(Category)
+    private categoriesRepository: Repository<Category>,
     private redisService: RedisService,
-    private categoriesService: CategoriesService,
   ) {}
 
-  async findAll(): Promise<Location[]> {
-    // Try to get from cache first
-    const cachedLocations =
-      await this.redisService.get<Location[]>('all_locations');
-    if (cachedLocations) {
-      return cachedLocations;
+  async ensureCategory(categoryIdOrName: string): Promise<string> {
+    // First, try to find by ID
+    let category = await this.categoriesRepository.findOne({ where: { id: categoryIdOrName } });
+    
+    if (category) {
+      return category.id;
     }
 
-    // If not in cache, get from DB and store in cache
-    const locations = await this.locationsRepository.find();
-    await this.redisService.set('all_locations', locations, 3600); // Cache for 1 hour
-    return locations;
+    // If not found by ID, try to find by name
+    category = await this.categoriesRepository.findOne({ where: { categoryName: categoryIdOrName } });
+    
+    if (category) {
+      return category.id;
+    }
+
+    // If still not found, create new category
+    const newCategory = this.categoriesRepository.create({
+      categoryName: categoryIdOrName,
+      hiddenByDefault: false,
+    });
+
+    const savedCategory = await this.categoriesRepository.save(newCategory);
+    return savedCategory.id;
   }
 
-  async findOne(id: string): Promise<Location> {
-    const cacheKey = `location:${id}`;
-    const cachedLocation = await this.redisService.get<Location>(cacheKey);
-    if (cachedLocation) {
-      return cachedLocation;
+  async getOrCreateUncategorized(): Promise<string> {
+    let uncategorized = await this.categoriesRepository.findOne({ 
+      where: { categoryName: 'Uncategorized' } 
+    });
+
+    if (!uncategorized) {
+      uncategorized = this.categoriesRepository.create({
+        categoryName: 'Uncategorized',
+        hiddenByDefault: false,
+      });
+      uncategorized = await this.categoriesRepository.save(uncategorized);
     }
 
-    const location = await this.locationsRepository.findOne({ where: { id } });
-    if (!location) {
-      throw new NotFoundException(`Location with ID ${id} not found`);
-    }
-
-    await this.redisService.set(cacheKey, location, 3600);
-    return location;
+    return uncategorized.id;
   }
 
-  async create(locationInput: CreateLocationInput): Promise<Location> {
-    // Convert input to entity format, excluding categoryName initially
-    const { categoryName, ...inputWithoutCategory } = locationInput;
+  async create(locationInput: CreateLocationInput, userId: string): Promise<Location> {
+    console.log('LocationsService.create called with:', locationInput);
+    
+    // The category should already be a valid UUID at this point
+    // since the frontend handles category creation
+    let categoryId = locationInput.category;
+    
+    // Fallback: if no category provided, use uncategorized
+    if (!categoryId) {
+      categoryId = await this.getOrCreateUncategorized();
+    }
 
-    const locationData: Partial<Location> = {
-      ...inputWithoutCategory,
+    // Validate that the category exists
+    const category = await this.categoriesRepository.findOne({ where: { id: categoryId } });
+    if (!category) {
+      throw new Error(`Category with ID ${categoryId} not found`);
+    }
+
+    const locationData = {
+      locationName: locationInput.locationName,
+      description: locationInput.description,
+      coordinates: locationInput.coordinates,
+      categoryId,
+      icon: locationInput.icon,
+      iconSize: locationInput.iconSize,
+      mediaUrl: locationInput.mediaUrl,
+      iconColor: locationInput.iconColor,
+      radius: locationInput.radius,
+      noCluster: locationInput.noCluster || false,
+      createdBy: userId,
+      lastUpdateBy: userId,
     };
 
-    // Handle category assignment
-    if (categoryName) {
-      const category = await this.categoriesService.findOrCreateByName(categoryName);
-      locationData.category = category;
-    } else {
-      // Use default category if no category specified
-      const defaultCategory = await this.categoriesService.getDefaultCategory();
-      locationData.category = defaultCategory;
-    }
+    console.log('Creating location with data:', locationData);
 
     const newLocation = this.locationsRepository.create(locationData);
     const savedLocation = await this.locationsRepository.save(newLocation);
 
     // Invalidate cache
     await this.redisService.del('all_locations');
+    await this.redisService.del('recent_locations:*');
 
-    // Add to geospatial index if coordinates are provided
-    if (savedLocation.coordinates) {
-      await this.addToGeoIndex(savedLocation.coordinates, savedLocation.id);
+    // Return with category relation loaded
+    const result = await this.locationsRepository.findOne({
+      where: { id: savedLocation.id },
+      relations: ['category'],
+    });
+
+    if (!result) {
+      throw new Error('Failed to retrieve created location');
     }
 
-    // Publish update notification
-    await this.redisService.publish(
-      'location_updates',
-      JSON.stringify({
-        action: 'create',
-        data: savedLocation,
-      }),
-    );
-
-    return savedLocation;
+    return result;
   }
 
-  async update(id: string, locationInput: UpdateLocationInput): Promise<Location> {
-    const location = await this.findOne(id);
+  async update(id: string, locationInput: UpdateLocationInput, userId: string): Promise<Location> {
+    const location = await this.locationsRepository.findOne({ where: { id } });
+    
+    if (!location) {
+      throw new NotFoundException(`Location with ID ${id} not found`);
+    }
 
-    // Convert input to entity format, excluding categoryName and id initially
-    const { categoryName, id: inputId, ...inputWithoutCategory } = locationInput;
+    // Handle category update if provided
+    let categoryId = location.categoryId;
+    if (locationInput.category) {
+      categoryId = await this.ensureCategory(locationInput.category);
+    }
 
-    const updateData: Partial<Location> = {
-      ...inputWithoutCategory,
+    const updateData = {
+      locationName: locationInput.locationName,
+      description: locationInput.description,
+      coordinates: locationInput.coordinates,
+      categoryId,
+      icon: locationInput.icon,
+      iconSize: locationInput.iconSize,
+      mediaUrl: locationInput.mediaUrl,
+      iconColor: locationInput.iconColor,
+      radius: locationInput.radius,
+      noCluster: locationInput.noCluster,
+      lastUpdateBy: userId,
+      // Preserve createdBy
+      createdBy: location.createdBy,
     };
 
-    // Handle category assignment if provided
-    if (categoryName) {
-      const category = await this.categoriesService.findOrCreateByName(categoryName);
-      updateData.category = category;
-    }
+    // Remove undefined values
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
 
-    // Update entity
-    Object.assign(location, updateData);
-    const updatedLocation = await this.locationsRepository.save(location);
+    await this.locationsRepository.update(id, updateData);
 
     // Invalidate cache
-    await this.redisService.del(`location:${id}`);
     await this.redisService.del('all_locations');
+    await this.redisService.del('recent_locations:*');
 
-    // Update geospatial index if coordinates changed
-    if (updateData.coordinates) {
-      await this.addToGeoIndex(updateData.coordinates, id);
+    const result = await this.locationsRepository.findOne({
+      where: { id },
+      relations: ['category'],
+    });
+
+    if (!result) {
+      throw new NotFoundException(`Location with ID ${id} not found after update`);
     }
 
-    return updatedLocation;
+    return result;
   }
 
-  // Helper method to add coordinates to geo index
-  private async addToGeoIndex(
-    coordinates: number[] | number[][],
-    id: string,
-  ): Promise<void> {
-    // Handle single point [X, Y]
-    if (
-      Array.isArray(coordinates) &&
-      coordinates.length === 2 &&
-      typeof coordinates[0] === 'number'
-    ) {
-      const [y, x] = coordinates as number[]; // [lat, lng] format
-      await this.redisService.geoAdd('locations_geo', x, y, id);
-    }
-    // Handle multiple points [[X,Y], [X1,Y1], ...]
-    else if (
-      Array.isArray(coordinates) &&
-      coordinates.length > 0 &&
-      Array.isArray(coordinates[0])
-    ) {
-      // Add each point to geo index with a unique identifier
-      const multiPoints = coordinates as number[][];
+  async findAll(): Promise<Location[]> {
+    const cacheKey = 'all_locations';
+    const cachedLocations = await this.redisService.get<Location[]>(cacheKey);
 
-      for (let i = 0; i < multiPoints.length; i++) {
-        const [y, x] = multiPoints[i];
-        // For multiple points, we add an index suffix to the ID
-        const pointId = `${id}:${i}`;
-        await this.redisService.geoAdd('locations_geo', x, y, pointId);
-      }
+    if (cachedLocations) {
+      return cachedLocations;
     }
+
+    const locations = await this.locationsRepository.find({
+      relations: ['category'],
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+
+    await this.redisService.set(cacheKey, locations, 300); // Cache for 5 minutes
+
+    return locations;
   }
 
-  async findNearby(
-    longitude: number,
-    latitude: number,
-    radius: number,
-  ): Promise<Location[]> {
-    // Use Redis geospatial search to find locations within radius
-    const nearbyIds = await this.redisService.geoRadius(
-      'locations_geo',
-      longitude,
-      latitude,
-      radius,
-      'km',
-    );
+  async findOne(id: string): Promise<Location> {
+    const location = await this.locationsRepository.findOne({
+      where: { id },
+      relations: ['category'],
+    });
 
-    if (nearbyIds.length === 0) {
-      return [];
+    if (!location) {
+      throw new NotFoundException(`Location with ID ${id} not found`);
     }
 
-    // Extract the base IDs (remove the index suffixes)
-    const baseIds = nearbyIds.map((id) => id.split(':')[0]);
-    // Remove duplicates
-    const uniqueIds = [...new Set(baseIds)];
-
-    // Get full location data for the IDs
-    return await this.locationsRepository.findByIds(uniqueIds);
+    return location;
   }
 
   async remove(id: string): Promise<boolean> {
     const result = await this.locationsRepository.delete(id);
+    
+    if (result.affected === 0) {
+      throw new NotFoundException(`Location with ID ${id} not found`);
+    }
 
     // Invalidate cache
-    await this.redisService.del(`location:${id}`);
     await this.redisService.del('all_locations');
+    await this.redisService.del('recent_locations:*');
 
-    return (result.affected ?? 0) > 0;
+    return true;
   }
 }
