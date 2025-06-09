@@ -6,6 +6,7 @@ import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { RedisModule } from './redis/redis.module';
 import { AuthModule } from './auth/auth.module';
+import { DiscordModule } from './discord/discord.module';
 import { LocationsModule } from './locations/locations.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ChangelogModule } from './changelog/changelog.module';
@@ -15,6 +16,7 @@ import { ChangelogModule } from './changelog/changelog.module';
     ConfigModule,
     DatabaseModule,
     RedisModule,
+    DiscordModule,
     AuthModule,
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,

@@ -10,7 +10,7 @@ import { CategoriesService } from './categories.service';
 import { Category } from './category.entity';
 import { CreateCategoryInput } from './dto/create-category.input';
 import { UpdateCategoryInput } from './dto/update-category.input';
-import { ApiKeyGuard } from '../auth/api-key.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Resolver(() => Category)
 export class CategoriesResolver {
@@ -29,7 +29,7 @@ export class CategoriesResolver {
   }
 
   @Mutation(() => Category)
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(JwtAuthGuard)
   async createCategory(
     @Args('createCategoryInput') createCategoryInput: CreateCategoryInput,
   ): Promise<Category> {
@@ -38,7 +38,7 @@ export class CategoriesResolver {
   }
 
   @Mutation(() => Category)
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(JwtAuthGuard)
   async updateCategory(
     @Args('updateCategoryInput') updateCategoryInput: UpdateCategoryInput,
   ): Promise<Category> {
@@ -50,7 +50,7 @@ export class CategoriesResolver {
   }
 
   @Mutation(() => Boolean)
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(JwtAuthGuard)
   async removeCategory(
     @Args('id', { type: () => ID }) id: string,
   ): Promise<boolean> {

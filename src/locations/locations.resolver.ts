@@ -11,7 +11,7 @@ import { Location } from './location.entity';
 import { CreateLocationInput } from './dto/create-location.input';
 import { UpdateLocationInput } from './dto/update-location.input';
 import { NearbyLocationInput } from './dto/nearby-location.input';
-import { ApiKeyGuard } from '../auth/api-key.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Resolver(() => Location)
 export class LocationsResolver {
@@ -45,7 +45,7 @@ export class LocationsResolver {
       Requires API key in x-api-key header.
     `,
   })
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(JwtAuthGuard)
   async createLocation(
     @Args('createLocationInput') createLocationInput: CreateLocationInput,
   ): Promise<Location> {
@@ -53,7 +53,7 @@ export class LocationsResolver {
   }
 
   @Mutation(() => Location)
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(JwtAuthGuard)
   async updateLocation(
     @Args('updateLocationInput') updateLocationInput: UpdateLocationInput,
   ): Promise<Location> {
@@ -64,7 +64,7 @@ export class LocationsResolver {
   }
 
   @Mutation(() => Boolean)
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(JwtAuthGuard)
   async removeLocation(
     @Args('id', { type: () => ID }) id: string,
   ): Promise<boolean> {

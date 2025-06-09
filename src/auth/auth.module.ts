@@ -1,8 +1,17 @@
 import { Module } from '@nestjs/common';
-import { ApiKeyGuard } from './api-key.guard';
+import { ConfigModule } from '@nestjs/config';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import { DiscordService } from './discord.service';
+import { AuthController } from './auth.controller';
+import { DiscordModule } from '../discord/discord.module';
 
 @Module({
-  providers: [ApiKeyGuard],
-  exports: [ApiKeyGuard],
+  imports: [
+    ConfigModule,
+    DiscordModule,
+  ],
+  controllers: [AuthController],
+  providers: [JwtAuthGuard, DiscordService],
+  exports: [JwtAuthGuard, DiscordService],
 })
 export class AuthModule {}

@@ -9,7 +9,7 @@ import { UseGuards } from '@nestjs/common';
 import { ChangelogService } from './changelog.service';
 import { Changelog } from './changelog.entity';
 import { CreateChangelogInput } from './dto/create-changelog.input';
-import { ApiKeyGuard } from '../auth/api-key.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Resolver(() => Changelog)
 export class ChangelogResolver {
@@ -28,7 +28,7 @@ export class ChangelogResolver {
   }
 
   @Mutation(() => Changelog)
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(JwtAuthGuard)
   async createChangelogEntry(
     @Args('createChangelogInput') createChangelogInput: CreateChangelogInput,
   ): Promise<Changelog> {
