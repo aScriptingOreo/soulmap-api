@@ -1,6 +1,5 @@
 import { InputType, Field, Float } from '@nestjs/graphql';
-import { IsString, IsOptional, IsBoolean, IsNumber, IsArray, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsOptional, IsArray, IsBoolean, IsNumber } from 'class-validator';
 
 @InputType()
 export class CoordinateInput {
@@ -27,8 +26,6 @@ export class CreateLocationInput {
   @Field(() => [CoordinateInput], { nullable: true })
   @IsOptional()
   @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => CoordinateInput)
   coordinates?: CoordinateInput[];
 
   @Field()
@@ -64,4 +61,9 @@ export class CreateLocationInput {
   @IsOptional()
   @IsBoolean()
   noCluster?: boolean;
+
+  @Field(() => [String], { nullable: true })
+  @IsOptional()
+  @IsArray()
+  versions?: string[];
 }

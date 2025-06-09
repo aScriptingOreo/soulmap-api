@@ -2,28 +2,8 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
-type BundleInfo {
-  bundleId: String!
-  exists: Boolean!
-  size: Int
-  tileCount: Int
-}
-
-type BundleRequest {
-  format: String!
-  tileIndices: [Int!]!
-  version: String!
-}
-
 input BundleRequestInput {
   format: String! = "base64"
-  tileIndices: [Int!]!
-  version: String!
-}
-
-type BundleWithGrid {
-  format: String!
-  gridRegion: GridRegion!
   tileIndices: [Int!]!
   version: String!
 }
@@ -72,6 +52,7 @@ input CreateLocationInput {
   mediaUrl: String
   noCluster: Boolean! = false
   radius: Float
+  versions: [String!]
 }
 
 """
@@ -112,13 +93,7 @@ type Location {
   noCluster: Boolean!
   radius: Float
   updatedAt: DateTime!
-}
-
-type MapGridInfo {
-  """Grid dimension (sqrt of tilecount)"""
-  gridSize: Int!
-  totalTiles: Int!
-  version: String!
+  versions: [String!]!
 }
 
 type MapVersion {
@@ -153,12 +128,9 @@ type Mutation {
 }
 
 type Query {
-  allTileCoordinates(version: String!): [TileCoordinate!]!
-  bundleInfo(bundleId: String!): BundleInfo!
   categories: [Category!]!
   category(id: ID!): Category!
   changelog: [Changelog!]!
-  getAllTileFilesJson: String!
 
   """Get icon by ID"""
   icon(id: String!): Icon
@@ -172,24 +144,20 @@ type Query {
   """Get icons by category"""
   iconsByCategory(category: String!): [Icon!]!
   latestMapVersion: MapVersion!
-  listS3TileFiles(version: String!): [S3TileFile!]!
   location(id: ID!): Location!
   locations: [Location!]!
-  mapGridInfo(version: String!): MapGridInfo!
+  locationsByCategory(categoryId: String!): [Location!]!
+  locationsByCategoryAndVersion(categoryId: String!, version: String!): [Location!]!
+  locationsByVersion(version: String!): [Location!]!
   mapTileBundle(bundleRequest: BundleRequestInput!): TileBundle!
   mapVersion(version: String!): MapVersion
   mapVersions: [MapVersion!]!
-  optimalTileBundles(chunkSize: Int, version: String!): [BundleRequest!]!
-  optimalTileBundlesWithGrid(chunkSize: Int! = 25, version: String!): [BundleWithGrid!]!
-  preloadMapVersion(chunkSize: Int! = 25, version: String!): String!
   recentChanges(limit: Int!): [Changelog!]!
 
   """Search icons by name, category, or path"""
   searchIcons(query: String!): [Icon!]!
-  tileAtCoordinate(version: String!, x: Int!, y: Int!): TileCoordinate!
-  tileCoordinate(index: Int!, version: String!): TileCoordinate!
   tileFilesFromS3(version: String!): [S3TileFile!]!
-  tilesByRegion(endX: Int!, endY: Int!, startX: Int!, startY: Int!, version: String!): [TileCoordinate!]!
+  usedMapVersions: [String!]!
 }
 
 type S3TileFile {
@@ -239,4 +207,5 @@ input UpdateLocationInput {
   mediaUrl: String
   noCluster: Boolean = false
   radius: Float
+  versions: [String!]
 }

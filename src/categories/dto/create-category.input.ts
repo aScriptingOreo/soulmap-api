@@ -1,13 +1,19 @@
 import { InputType, Field } from '@nestjs/graphql';
-import { IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsBoolean } from 'class-validator';
 
 @InputType()
 export class CreateCategoryInput {
   @Field()
-  @IsNotEmpty()
+  @IsString()
   categoryName: string;
 
-  @Field({ nullable: true, defaultValue: false })
+  @Field({ nullable: true })
   @IsOptional()
+  @IsBoolean()
   hiddenByDefault?: boolean;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  path?: string; // Path field for category organization
 }

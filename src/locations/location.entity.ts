@@ -1,13 +1,5 @@
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 import { ObjectType, Field, ID, Float } from '@nestjs/graphql';
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-  CreateDateColumn,
-  UpdateDateColumn,
-  JoinColumn,
-} from 'typeorm';
 import { Category } from '../categories/category.entity';
 
 @ObjectType()
@@ -19,70 +11,75 @@ export class Coordinate {
   y: number;
 }
 
+@Entity('locations') // lowercase table name
+@Index('idx_locations_versions', ['versions'])
 @ObjectType()
-@Entity('locations')
 export class Location {
-  @Field(() => ID)
   @PrimaryGeneratedColumn('uuid')
+  @Field(() => ID)
   id: string;
 
+  @Column()
   @Field()
-  @Column({ name: 'locationname' })
   locationName: string;
 
+  @Column({ nullable: true })
   @Field({ nullable: true })
-  @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Field(() => [Coordinate], { nullable: true })
   @Column({ type: 'jsonb', nullable: true })
+  @Field(() => [Coordinate], { nullable: true })
   coordinates?: Coordinate[];
 
-  @Field(() => Category)
-  @ManyToOne(() => Category)
-  @JoinColumn({ name: 'category' })
-  category: Category;
+  @Column({ name: 'categoryId', nullable: true })
+  categoryId?: string;
 
-  @Column({ name: 'category' })
-  categoryId: string;
+  @ManyToOne(() => Category, { eager: true })
+  @JoinColumn({ name: 'categoryId' })
+  @Field(() => Category, { nullable: true })
+  category?: Category;
 
+  @Column({ nullable: true })
   @Field({ nullable: true })
-  @Column({ type: 'text', nullable: true })
   icon?: string;
 
+  @Column({ type: 'decimal', precision: 3, scale: 2, default: 1.0, nullable: true })
   @Field(() => Float, { nullable: true })
-  @Column({ type: 'float', name: 'iconsize', nullable: true })
   iconSize?: number;
 
+  @Column({ nullable: true })
   @Field({ nullable: true })
-  @Column({ type: 'text', name: 'mediaurl', nullable: true })
   mediaUrl?: string;
 
+  @Column({ nullable: true, default: '#000000' })
   @Field({ nullable: true })
-  @Column({ type: 'text', name: 'iconcolor', nullable: true })
   iconColor?: string;
 
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0, nullable: true })
   @Field(() => Float, { nullable: true })
-  @Column({ type: 'float', nullable: true })
   radius?: number;
 
+  @Column({ default: false })
   @Field()
-  @Column({ type: 'boolean', name: 'nocluster', default: false })
   noCluster: boolean;
 
+  @Column({ type: 'jsonb', default: () => "'[]'::jsonb" })
+  @Field(() => [String])
+  versions: string[];
+
+  @Column({ nullable: true })
   @Field({ nullable: true })
-  @Column({ type: 'text', name: 'createdby', nullable: true })
   createdBy?: string;
 
+  @Column({ nullable: true })
   @Field({ nullable: true })
-  @Column({ type: 'text', name: 'lastupdateby', nullable: true })
   lastUpdateBy?: string;
 
+  @CreateDateColumn()
   @Field()
-  @CreateDateColumn({ name: 'createdat' })
   createdAt: Date;
 
+  @UpdateDateColumn()
   @Field()
-  @UpdateDateColumn({ name: 'updatedat' })
   updatedAt: Date;
 }

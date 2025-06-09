@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Category } from './category.entity';
+import { Category } from './category.entity'; // Correct import path
 import { RedisService } from '../redis/redis.service';
 
 @Injectable()
@@ -43,7 +43,11 @@ export class CategoriesService {
   }
 
   async create(categoryData: Partial<Category>): Promise<Category> {
-    const newCategory = this.categoriesRepository.create(categoryData);
+    const newCategory = this.categoriesRepository.create({
+      categoryName: categoryData.categoryName,
+      hiddenByDefault: categoryData.hiddenByDefault || false,
+      path: categoryData.path, // Include path field
+    });
     const savedCategory = await this.categoriesRepository.save(newCategory);
 
     // Invalidate cache
@@ -55,8 +59,12 @@ export class CategoriesService {
   async update(id: string, categoryData: Partial<Category>): Promise<Category> {
     const category = await this.findOne(id);
 
-    // Update entity
-    Object.assign(category, categoryData);
+    // Update entity with path support
+    Object.assign(category, {
+      categoryName: categoryData.categoryName,
+      hiddenByDefault: categoryData.hiddenByDefault,
+      path: categoryData.path, // Include path field
+    });
     const updatedCategory = await this.categoriesRepository.save(category);
 
     // Invalidate cache

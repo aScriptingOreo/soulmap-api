@@ -22,6 +22,29 @@ export class LocationsResolver {
     return this.locationsService.findAll();
   }
 
+  @Query(() => [Location], { name: 'locationsByVersion' })
+  findByVersion(@Args('version') version: string) {
+    return this.locationsService.findByVersion(version);
+  }
+
+  @Query(() => [Location], { name: 'locationsByCategory' })
+  findByCategory(@Args('categoryId') categoryId: string) {
+    return this.locationsService.findByCategory(categoryId);
+  }
+
+  @Query(() => [Location], { name: 'locationsByCategoryAndVersion' })
+  findByCategoryAndVersion(
+    @Args('categoryId') categoryId: string,
+    @Args('version') version: string
+  ) {
+    return this.locationsService.findByCategoryAndVersion(categoryId, version);
+  }
+
+  @Query(() => [String], { name: 'usedMapVersions' })
+  getUsedVersions() {
+    return this.locationsService.getUsedVersions();
+  }
+
   @Query(() => Location)
   async location(
     @Args('id', { type: () => ID }) id: string,

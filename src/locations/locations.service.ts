@@ -76,6 +76,11 @@ export class LocationsService {
       throw new Error(`Category with ID ${categoryId} not found`);
     }
 
+    // Handle versions - default to ['latest'] if not provided
+    const versions = locationInput.versions && locationInput.versions.length > 0 
+      ? locationInput.versions 
+      : ['latest'];
+
     const locationData = {
       locationName: locationInput.locationName,
       description: locationInput.description,
@@ -87,6 +92,7 @@ export class LocationsService {
       iconColor: locationInput.iconColor,
       radius: locationInput.radius,
       noCluster: locationInput.noCluster || false,
+      versions, // Add versions support
       createdBy: userId,
       lastUpdateBy: userId,
     };
@@ -126,6 +132,11 @@ export class LocationsService {
       categoryId = await this.ensureCategory(locationInput.category);
     }
 
+    // Handle versions - keep existing if not provided
+    const versions = locationInput.versions !== undefined 
+      ? (locationInput.versions.length > 0 ? locationInput.versions : ['latest'])
+      : location.versions || ['latest'];
+
     const updateData = {
       locationName: locationInput.locationName,
       description: locationInput.description,
@@ -137,6 +148,7 @@ export class LocationsService {
       iconColor: locationInput.iconColor,
       radius: locationInput.radius,
       noCluster: locationInput.noCluster,
+      versions, // Add versions support
       lastUpdateBy: userId,
       // Preserve createdBy
       createdBy: location.createdBy,
@@ -212,5 +224,58 @@ export class LocationsService {
     await this.redisService.del('recent_locations:*');
 
     return true;
+  }
+
+  // Add new version-aware query methods
+  async findByVersion(version: string): Promise<Location[]> {
+    return this.locationsRepository
+      .createQueryBuilder('location')
+      .leftJoinAndSelect('location.category', 'category')
+      .where(
+        version === 'latest' 
+          ? 'location.versions @> :latestVersion OR location.versions @> :specificVersion'
+          : 'location.versions @> :specificVersion',
+        { 
+          latestVersion: JSON.stringify(['latest']),
+          specificVersion: JSON.stringify([version])
+        }
+      )
+      .orderBy('location.createdAt', 'DESC')
+      .getMany();
+  }
+
+  async findByCategory(categoryId: string): Promise<Location[]> {
+    return this.locationsRepository.find({
+      where: { categoryId },
+      relations: ['category'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findByCategoryAndVersion(categoryId: string, version: string): Promise<Location[]> {
+    return this.locationsRepository
+      .createQueryBuilder('location')
+      .leftJoinAndSelect('location.category', 'category')
+      .where('location.categoryId = :categoryId', { categoryId })
+      .andWhere(
+        version === 'latest' 
+          ? 'location.versions @> :latestVersion OR location.versions @> :specificVersion'
+          : 'location.versions @> :specificVersion',
+        { 
+          latestVersion: JSON.stringify(['latest']),
+          specificVersion: JSON.stringify([version])
+        }
+      )
+      .orderBy('location.createdAt', 'DESC')
+      .getMany();
+  }
+
+  async getUsedVersions(): Promise<string[]> {
+    const result = await this.locationsRepository
+      .createQueryBuilder('location')
+      .select('DISTINCT jsonb_array_elements_text(location.versions)', 'version')
+      .getRawMany();
+
+    return result.map(row => row.version).filter(v => v).sort();
   }
 }

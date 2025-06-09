@@ -1,18 +1,31 @@
-import { Field, ObjectType } from '@nestjs/graphql';
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
+import { ObjectType, Field, ID } from '@nestjs/graphql';
 
+@Entity('categories') // lowercase table name
+@Index('idx_categories_path', ['path'])
 @ObjectType()
-@Entity('categories')
 export class Category {
-  @Field()
   @PrimaryGeneratedColumn('uuid')
+  @Field(() => ID)
   id: string;
 
+  @Column({ unique: true })
   @Field()
-  @Column({ name: 'categoryName', type: 'text', unique: true })
   categoryName: string;
 
+  @Column({ default: false })
   @Field()
-  @Column({ type: 'boolean', default: false })
   hiddenByDefault: boolean;
+
+  @Column({ nullable: true, length: 500 })
+  @Field({ nullable: true })
+  path?: string; // Path field for category organization
+
+  @CreateDateColumn()
+  @Field()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  @Field()
+  updatedAt: Date;
 }

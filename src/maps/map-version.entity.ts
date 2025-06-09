@@ -25,18 +25,6 @@ export class MapVersion {
 
   @Field(() => Int)
   tilecount: number;
-
-  @Field()
-  isLatest: boolean;
-
-  @Field(() => Int, { description: 'Maximum tile index (tilecount - 1)' })
-  maxTileIndex: number;
-
-  @Field(() => Int, { description: 'Minimum tile index (always 0)' })
-  minTileIndex: number;
-
-  @Field(() => Int, { description: 'Grid size (sqrt of tilecount)' })
-  gridSize: number;
 }
 
 @ObjectType()

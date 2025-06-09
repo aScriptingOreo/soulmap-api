@@ -1,37 +1,46 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
-import { join } from 'path';
-import { ConfigModule } from './config/config.module';
-import { DatabaseModule } from './database/database.module';
-import { RedisModule } from './redis/redis.module';
-import { AuthModule } from './auth/auth.module';
-import { DiscordModule } from './discord/discord.module';
 import { LocationsModule } from './locations/locations.module';
 import { CategoriesModule } from './categories/categories.module';
-import { ChangelogModule } from './changelog/changelog.module';
+import { AuthModule } from './auth/auth.module';
+import { RedisModule } from './redis/redis.module';
 import { IconsModule } from './icons/icons.module';
-import { S3Module } from './s3/s3.module';
 import { MapsModule } from './maps/maps.module';
 
 @Module({
   imports: [
-    ConfigModule,
-    DatabaseModule,
-    RedisModule,
-    S3Module,
-    DiscordModule,
-    AuthModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        host: configService.get('PG_HOST'),
+        port: configService.get<number>('PG_PORT') || 5432,
+        username: configService.get('PG_U'),
+        password: configService.get('PG_P'),
+        database: configService.get('PG_DB'),
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        synchronize: true, // Automatically update database schema
+        logging: configService.get('NODE_ENV') === 'development',
+        dropSchema: false, // Never drop existing data
+      }),
+      inject: [ConfigService],
+    }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
-      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
-      sortSchema: true,
-      playground: true, // Enable GraphQL playground
-      context: ({ req }) => ({ req }), // Pass request to context for guards
+      autoSchemaFile: true,
+      playground: true,
+      introspection: true,
     }),
     LocationsModule,
-    CategoriesModule,
-    ChangelogModule,
+    CategoriesModule, // Make sure Category is only imported once
+    AuthModule,
+    RedisModule,
     IconsModule,
     MapsModule,
   ],
