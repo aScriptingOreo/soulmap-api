@@ -1,6 +1,6 @@
 import { InputType, Field, ID } from '@nestjs/graphql';
 import { IsNotEmpty, IsOptional, IsArray, IsNumber, IsBoolean } from 'class-validator';
-import { CoordinateInput } from './create-location.dto';
+import GraphQLJSON from 'graphql-type-json';
 
 @InputType()
 export class UpdateLocationInput {
@@ -16,10 +16,9 @@ export class UpdateLocationInput {
   @IsOptional()
   description?: string;
 
-  @Field(() => [CoordinateInput], { nullable: true })
+  @Field(() => GraphQLJSON, { nullable: true })
   @IsOptional()
-  @IsArray()
-  coordinates?: CoordinateInput[];
+  coordinates?: any; // Accept any JSON format
 
   @Field({ nullable: true })
   @IsOptional()

@@ -84,7 +84,7 @@ export class LocationsService {
     const locationData = {
       locationName: locationInput.locationName,
       description: locationInput.description,
-      coordinates: locationInput.coordinates,
+      coordinates: locationInput.coordinates, // Store raw JSON directly
       categoryId,
       icon: locationInput.icon,
       iconSize: locationInput.iconSize,
@@ -92,7 +92,7 @@ export class LocationsService {
       iconColor: locationInput.iconColor,
       radius: locationInput.radius,
       noCluster: locationInput.noCluster || false,
-      versions, // Add versions support
+      versions,
       createdBy: userId,
       lastUpdateBy: userId,
     };
@@ -140,7 +140,7 @@ export class LocationsService {
     const updateData = {
       locationName: locationInput.locationName,
       description: locationInput.description,
-      coordinates: locationInput.coordinates,
+      coordinates: locationInput.coordinates, // Store raw JSON directly
       categoryId,
       icon: locationInput.icon,
       iconSize: locationInput.iconSize,
@@ -148,9 +148,8 @@ export class LocationsService {
       iconColor: locationInput.iconColor,
       radius: locationInput.radius,
       noCluster: locationInput.noCluster,
-      versions, // Add versions support
+      versions,
       lastUpdateBy: userId,
-      // Preserve createdBy
       createdBy: location.createdBy,
     };
 

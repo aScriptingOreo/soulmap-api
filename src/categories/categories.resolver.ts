@@ -28,6 +28,13 @@ export class CategoriesResolver {
     return this.categoriesService.findOne(id);
   }
 
+  @Query(() => Category, { description: 'Get category with all its locations' })
+  async categoryWithLocations(
+    @Args('id', { type: () => ID }) id: string,
+  ): Promise<Category> {
+    return this.categoriesService.findOneWithLocations(id);
+  }
+
   @Mutation(() => Category)
   @UseGuards(JwtAuthGuard)
   async createCategory(

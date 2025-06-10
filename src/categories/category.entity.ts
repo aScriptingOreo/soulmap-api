@@ -1,18 +1,35 @@
-import { Field, ObjectType } from '@nestjs/graphql';
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Field, ObjectType, ID } from '@nestjs/graphql';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import { Location } from '../locations/location.entity';
 
 @ObjectType()
 @Entity('categories')
 export class Category {
-  @Field()
+  @Field(() => ID)
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Field()
-  @Column({ name: 'categoryName', type: 'text', unique: true })
+  @Column({ unique: true })
   categoryName: string;
 
-  @Field()
-  @Column({ type: 'boolean', default: false })
+  @Field({ defaultValue: false })
+  @Column({ default: false })
   hiddenByDefault: boolean;
+
+  @Field({ nullable: true })
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  path?: string;
+
+  @Field(() => [Location], { nullable: true })
+  @OneToMany(() => Location, location => location.category)
+  locations?: Location[];
+
+  @Field()
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @Field()
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

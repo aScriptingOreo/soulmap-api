@@ -1,17 +1,6 @@
 import { InputType, Field, Float } from '@nestjs/graphql';
-import { IsString, IsOptional, IsBoolean, IsNumber, IsArray, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
-
-@InputType()
-export class CoordinateInput {
-  @Field(() => Float)
-  @IsNumber()
-  x: number;
-
-  @Field(() => Float)
-  @IsNumber()
-  y: number;
-}
+import { IsString, IsOptional, IsBoolean, IsNumber, IsArray } from 'class-validator';
+import GraphQLJSON from 'graphql-type-json';
 
 @InputType()
 export class CreateLocationInput {
@@ -19,17 +8,14 @@ export class CreateLocationInput {
   @IsString()
   locationName: string;
 
-  @Field({ nullable: true })
+  @Field({ nullable: true }) 
   @IsOptional()
   @IsString()
   description?: string;
 
-  @Field(() => [CoordinateInput], { nullable: true })
+  @Field(() => GraphQLJSON, { nullable: true })
   @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => CoordinateInput)
-  coordinates?: CoordinateInput[];
+  coordinates?: any; // Raw JSON: [2612,3625] or [[3402,
 
   @Field()
   @IsString()

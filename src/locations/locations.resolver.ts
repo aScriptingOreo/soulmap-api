@@ -88,4 +88,9 @@ export class LocationsResolver {
   ): Promise<boolean> {
     return this.locationsService.remove(id);
   }
+
+  @Query(() => [Location])
+  async locationsGroupedByCategory() {
+    return this.locationsService.findAll(); // Adjust this line if you implement server-side grouping
+  }
 }

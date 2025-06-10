@@ -10,8 +10,12 @@ input BundleRequestInput {
 
 type Category {
   categoryName: String!
+  createdAt: DateTime!
   hiddenByDefault: Boolean!
-  id: String!
+  id: ID!
+  locations: [Location!]
+  path: String
+  updatedAt: DateTime!
 }
 
 type Changelog {
@@ -19,16 +23,6 @@ type Changelog {
   id: Int!
   modifiedBy: String!
   timestamp: DateTime!
-}
-
-type Coordinate {
-  x: Float!
-  y: Float!
-}
-
-input CoordinateInput {
-  x: Float!
-  y: Float!
 }
 
 input CreateCategoryInput {
@@ -43,7 +37,7 @@ input CreateChangelogInput {
 
 input CreateLocationInput {
   category: String!
-  coordinates: [CoordinateInput!]
+  coordinates: JSON
   description: String
   icon: String
   iconColor: String
@@ -77,9 +71,15 @@ type Icon {
   url: String!
 }
 
+"""
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSON
+
 type Location {
-  category: Category!
-  coordinates: [Coordinate!]
+  category: Category
+  categoryId: String
+  coordinates: JSON
   createdAt: DateTime!
   createdBy: String
   description: String
@@ -93,7 +93,7 @@ type Location {
   noCluster: Boolean!
   radius: Float
   updatedAt: DateTime!
-  versions: [String!]!
+  versions: [String!]
 }
 
 type MapVersion {
@@ -130,6 +130,9 @@ type Mutation {
 type Query {
   categories: [Category!]!
   category(id: ID!): Category!
+
+  """Get category with all its locations"""
+  categoryWithLocations(id: ID!): Category!
   changelog: [Changelog!]!
 
   """Get icon by ID"""
@@ -149,6 +152,7 @@ type Query {
   locationsByCategory(categoryId: String!): [Location!]!
   locationsByCategoryAndVersion(categoryId: String!, version: String!): [Location!]!
   locationsByVersion(version: String!): [Location!]!
+  locationsGroupedByCategory: [Location!]!
   mapTileBundle(bundleRequest: BundleRequestInput!): TileBundle!
   mapVersion(version: String!): MapVersion
   mapVersions: [MapVersion!]!
@@ -197,7 +201,7 @@ input UpdateCategoryInput {
 
 input UpdateLocationInput {
   category: String
-  coordinates: [CoordinateInput!]
+  coordinates: JSON
   description: String
   icon: String
   iconColor: String
@@ -205,7 +209,7 @@ input UpdateLocationInput {
   id: ID!
   locationName: String
   mediaUrl: String
-  noCluster: Boolean = false
+  noCluster: Boolean
   radius: Float
   versions: [String!]
 }

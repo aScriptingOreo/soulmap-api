@@ -42,6 +42,26 @@ export class CategoriesService {
     return category;
   }
 
+  async findOneWithLocations(id: string): Promise<Category> {
+    const cacheKey = `category_with_locations:${id}`;
+    const cachedCategory = await this.redisService.get<Category>(cacheKey);
+    if (cachedCategory) {
+      return cachedCategory;
+    }
+
+    const category = await this.categoriesRepository.findOne({
+      where: { id },
+      relations: ['locations'],
+    });
+
+    if (!category) {
+      throw new NotFoundException(`Category with ID ${id} not found`);
+    }
+
+    await this.redisService.set(cacheKey, category, 1800); // 30 minutes cache
+    return category;
+  }
+
   async create(categoryData: Partial<Category>): Promise<Category> {
     const newCategory = this.categoriesRepository.create(categoryData);
     const savedCategory = await this.categoriesRepository.save(newCategory);
