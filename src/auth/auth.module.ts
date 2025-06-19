@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { DiscordService } from './discord.service';
@@ -8,7 +8,7 @@ import { DiscordModule } from '../discord/discord.module';
 @Module({
   imports: [
     ConfigModule,
-    DiscordModule,
+    forwardRef(() => DiscordModule),
   ],
   controllers: [AuthController],
   providers: [JwtAuthGuard, DiscordService],

@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Resolver,
   Query,
@@ -43,7 +46,10 @@ export class ChangelogResolver {
     @Context() context: any,
   ): Promise<Changelog> {
     const userId = context.req.user.userId; // Get from JWT payload
-    const entry = await this.changelogService.create(createChangelogInput, userId);
+    const entry = await this.changelogService.create(
+      createChangelogInput,
+      userId,
+    );
     return entry;
   }
 
@@ -54,7 +60,7 @@ export class ChangelogResolver {
     @Context() context: any,
   ): Promise<boolean> {
     const userId = context.req.user.userId; // Get from JWT payload
-    
+
     try {
       // Get the changelog entry
       const originalEntry = await this.changelogService.findById(changelogId);
@@ -113,15 +119,17 @@ export class ChangelogResolver {
       if (revertAction === ChangeAction.CREATE) {
         // Recreate the deleted entity
         if (entityType === EntityType.LOCATION) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { id, ...createData } = revertData;
           await this.locationsService.create(
             {
               ...createData,
-              category: createData.category || createData.categoryId,
+              category: createData.categoryId || createData.category,
             },
             userId,
           );
         } else if (entityType === EntityType.CATEGORY) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { id, ...createData } = revertData;
           await this.categoriesService.create(createData, userId);
         }
@@ -132,7 +140,7 @@ export class ChangelogResolver {
             entityId,
             {
               ...revertData,
-              category: revertData.category || revertData.categoryId,
+              category: revertData.categoryId || revertData.category,
             },
             userId,
           );
@@ -146,7 +154,8 @@ export class ChangelogResolver {
         revertAction,
         entityType,
         {
-          entityId: revertAction === ChangeAction.CREATE ? 'recreated' : entityId,
+          entityId:
+            revertAction === ChangeAction.CREATE ? 'recreated' : entityId,
           entityName,
           oldData: action === ChangeAction.DELETE ? null : fullDataAfter,
           newData: fullDataBefore,
@@ -160,7 +169,9 @@ export class ChangelogResolver {
         userId,
       );
 
-      console.log(`Successfully reverted ${action} on ${entityType} ${entityId}`);
+      console.log(
+        `Successfully reverted ${action} on ${entityType} ${entityId}`,
+      );
       return true;
     } catch (error) {
       console.error('Failed to revert change:', error);

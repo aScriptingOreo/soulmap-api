@@ -11,6 +11,7 @@ import { LocationsService } from './locations.service';
 import { Location } from './location.entity';
 import { CreateLocationInput } from './dto/create-location.input';
 import { UpdateLocationInput } from './dto/update-location.input';
+import { BatchUpdateLocationInput } from './dto/batch-update-location.input';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Resolver(() => Location)
@@ -89,6 +90,17 @@ export class LocationsResolver {
   ): Promise<boolean> {
     const userId = context.req.user.userId; // Get from JWT payload
     return this.locationsService.remove(id, userId);
+  }
+
+  @Mutation(() => [Location])
+  @UseGuards(JwtAuthGuard)
+  async batchUpdateLocations(
+    @Args('batchUpdateInput') batchUpdateInput: BatchUpdateLocationInput,
+    @Context() context: any,
+  ): Promise<Location[]> {
+    const userId = context.req.user.userId;
+    const { ids, ...updateData } = batchUpdateInput;
+    return this.locationsService.batchUpdate(ids, updateData, userId);
   }
 
   @Query(() => [Location])

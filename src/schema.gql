@@ -2,6 +2,21 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+input BatchUpdateLocationInput {
+  category: String
+  coordinates: JSON
+  description: String
+  icon: String
+  iconColor: String
+  iconSize: Float
+  ids: [ID!]!
+  locationName: String
+  mediaUrl: String
+  noCluster: Boolean
+  radius: Float
+  versions: [String!]
+}
+
 input BundleRequestInput {
   format: String! = "base64"
   tileIndices: [Int!]!
@@ -69,6 +84,14 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 """
 scalar DateTime
 
+type DiscordUserInfo {
+  avatar: String
+  avatarUrl: String
+  displayName: String
+  id: String!
+  username: String!
+}
+
 enum EntityType {
   CATEGORY
   LOCATION
@@ -133,6 +156,7 @@ type MapVersion {
 }
 
 type Mutation {
+  batchUpdateLocations(batchUpdateInput: BatchUpdateLocationInput!): [Location!]!
   createCategory(createCategoryInput: CreateCategoryInput!): Category!
   createChangelogEntry(createChangelogInput: CreateChangelogInput!): Changelog!
 
@@ -158,6 +182,8 @@ type Query {
   """Get category with all its locations"""
   categoryWithLocations(id: ID!): Category!
   changelog: [Changelog!]!
+  discordUserInfo(userId: String!): DiscordUserInfo
+  discordUsersInfo(userIds: [String!]!): [DiscordUserInfo!]!
 
   """Get icon by ID"""
   icon(id: String!): Icon
