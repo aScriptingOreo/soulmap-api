@@ -1,14 +1,29 @@
 import { InputType, Field } from '@nestjs/graphql';
-import { IsNotEmpty, IsIn } from 'class-validator';
+import { IsNotEmpty, IsEnum, IsOptional } from 'class-validator';
+import GraphQLJSON from 'graphql-type-json';
+import { ChangeAction, EntityType } from '../changelog.types';
 
 @InputType()
 export class CreateChangelogInput {
-  @Field()
+  @Field(() => ChangeAction)
   @IsNotEmpty()
-  @IsIn(['Location', 'Category'])
-  changeType: string;
+  @IsEnum(ChangeAction)
+  action: ChangeAction;
 
-  @Field()
+  @Field(() => EntityType)
   @IsNotEmpty()
-  modifiedBy: string;
+  @IsEnum(EntityType)
+  entityType: EntityType;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  entityId?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  entityName?: string;
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  @IsOptional()
+  changeData?: any;
 }

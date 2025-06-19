@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Location } from './location.entity';
@@ -6,6 +6,8 @@ import { CreateLocationInput } from './dto/create-location.input';
 import { UpdateLocationInput } from './dto/update-location.input';
 import { Category } from '../categories/category.entity';
 import { RedisService } from '../redis/redis.service';
+import { ChangelogService } from '../changelog/changelog.service';
+import { LocationChangeData } from '../changelog/changelog.types';
 
 @Injectable()
 export class LocationsService {
@@ -15,6 +17,8 @@ export class LocationsService {
     @InjectRepository(Category)
     private categoriesRepository: Repository<Category>,
     private redisService: RedisService,
+    @Inject(forwardRef(() => ChangelogService))
+    private changelogService: ChangelogService,
   ) {}
 
   async ensureCategory(categoryIdOrName: string): Promise<string> {
@@ -102,10 +106,6 @@ export class LocationsService {
     const newLocation = this.locationsRepository.create(locationData);
     const savedLocation = await this.locationsRepository.save(newLocation);
 
-    // Invalidate cache
-    await this.redisService.del('all_locations');
-    await this.redisService.del('recent_locations:*');
-
     // Return with category relation loaded
     const result = await this.locationsRepository.findOne({
       where: { id: savedLocation.id },
@@ -116,15 +116,61 @@ export class LocationsService {
       throw new Error('Failed to retrieve created location');
     }
 
+    // Log creation to changelog
+    const changelogData: LocationChangeData = {
+      id: result.id,
+      locationName: result.locationName,
+      category: result.category?.categoryName,
+      categoryId: result.categoryId,
+      coordinates: result.coordinates,
+      description: result.description,
+      icon: result.icon,
+      iconColor: result.iconColor,
+      iconSize: result.iconSize,
+      mediaUrl: result.mediaUrl,
+      noCluster: result.noCluster,
+      radius: result.radius,
+      versions: result.versions,
+    };
+    await this.changelogService.logLocationCreate(changelogData, userId);
+
+    // Invalidate cache
+    await this.redisService.del('all_locations');
+    await this.redisService.del('recent_locations:*');
+
     return result;
   }
 
-  async update(id: string, locationInput: UpdateLocationInput, userId: string): Promise<Location> {
-    const location = await this.locationsRepository.findOne({ where: { id } });
+  async update(
+    id: string,
+    locationInput: UpdateLocationInput,
+    userId: string,
+  ): Promise<Location> {
+    const location = await this.locationsRepository.findOne({ 
+      where: { id },
+      relations: ['category'],
+    });
     
     if (!location) {
       throw new NotFoundException(`Location with ID ${id} not found`);
     }
+
+    // Store old data for changelog
+    const oldData: LocationChangeData = {
+      id: location.id,
+      locationName: location.locationName,
+      category: location.category?.categoryName,
+      categoryId: location.categoryId,
+      coordinates: location.coordinates,
+      description: location.description,
+      icon: location.icon,
+      iconColor: location.iconColor,
+      iconSize: location.iconSize,
+      mediaUrl: location.mediaUrl,
+      noCluster: location.noCluster,
+      radius: location.radius,
+      versions: location.versions,
+    };
 
     // Handle category update if provided
     let categoryId = location.categoryId;
@@ -133,9 +179,12 @@ export class LocationsService {
     }
 
     // Handle versions - keep existing if not provided
-    const versions = locationInput.versions !== undefined 
-      ? (locationInput.versions.length > 0 ? locationInput.versions : ['latest'])
-      : location.versions || ['latest'];
+    const versions =
+      locationInput.versions !== undefined
+        ? locationInput.versions.length > 0
+          ? locationInput.versions
+          : ['latest']
+        : location.versions || ['latest'];
 
     const updateData = {
       locationName: locationInput.locationName,
@@ -154,7 +203,7 @@ export class LocationsService {
     };
 
     // Remove undefined values
-    Object.keys(updateData).forEach(key => {
+    Object.keys(updateData).forEach((key) => {
       if (updateData[key] === undefined) {
         delete updateData[key];
       }
@@ -162,18 +211,46 @@ export class LocationsService {
 
     await this.locationsRepository.update(id, updateData);
 
-    // Invalidate cache
-    await this.redisService.del('all_locations');
-    await this.redisService.del('recent_locations:*');
-
     const result = await this.locationsRepository.findOne({
       where: { id },
       relations: ['category'],
     });
 
     if (!result) {
-      throw new NotFoundException(`Location with ID ${id} not found after update`);
+      throw new NotFoundException(
+        `Location with ID ${id} not found after update`,
+      );
     }
+
+    // Store new data for changelog
+    const newData: LocationChangeData = {
+      id: result.id,
+      locationName: result.locationName,
+      category: result.category?.categoryName,
+      categoryId: result.categoryId,
+      coordinates: result.coordinates,
+      description: result.description,
+      icon: result.icon,
+      iconColor: result.iconColor,
+      iconSize: result.iconSize,
+      mediaUrl: result.mediaUrl,
+      noCluster: result.noCluster,
+      radius: result.radius,
+      versions: result.versions,
+    };
+
+    // Log update to changelog
+    await this.changelogService.logLocationUpdate(
+      id,
+      result.locationName,
+      oldData,
+      newData,
+      userId,
+    );
+
+    // Invalidate cache
+    await this.redisService.del('all_locations');
+    await this.redisService.del('recent_locations:*');
 
     return result;
   }
@@ -211,12 +288,42 @@ export class LocationsService {
     return location;
   }
 
-  async remove(id: string): Promise<boolean> {
+  async remove(id: string, userId: string): Promise<boolean> {
+    // Get the location data before deletion for changelog
+    const location = await this.locationsRepository.findOne({
+      where: { id },
+      relations: ['category'],
+    });
+
+    if (!location) {
+      throw new NotFoundException(`Location with ID ${id} not found`);
+    }
+
+    // Store data for changelog
+    const locationData: LocationChangeData = {
+      id: location.id,
+      locationName: location.locationName,
+      category: location.category?.categoryName,
+      categoryId: location.categoryId,
+      coordinates: location.coordinates,
+      description: location.description,
+      icon: location.icon,
+      iconColor: location.iconColor,
+      iconSize: location.iconSize,
+      mediaUrl: location.mediaUrl,
+      noCluster: location.noCluster,
+      radius: location.radius,
+      versions: location.versions,
+    };
+
     const result = await this.locationsRepository.delete(id);
     
     if (result.affected === 0) {
       throw new NotFoundException(`Location with ID ${id} not found`);
     }
+
+    // Log deletion to changelog
+    await this.changelogService.logLocationDelete(locationData, userId);
 
     // Invalidate cache
     await this.redisService.del('all_locations');

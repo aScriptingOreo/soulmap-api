@@ -1,5 +1,5 @@
 import { InputType, Field } from '@nestjs/graphql';
-import { IsNotEmpty, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsBoolean } from 'class-validator';
 
 @InputType()
 export class CreateCategoryInput {
@@ -9,5 +9,15 @@ export class CreateCategoryInput {
 
   @Field({ nullable: true, defaultValue: false })
   @IsOptional()
+  @IsBoolean()
   hiddenByDefault?: boolean;
+
+  @Field({ nullable: true, defaultValue: false })
+  @IsOptional()
+  @IsBoolean()
+  isDisabled?: boolean; // Add this field
+
+  @Field({ nullable: true })
+  @IsOptional()
+  path?: string;
 }

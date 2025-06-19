@@ -13,12 +13,22 @@ type Category {
   createdAt: DateTime!
   hiddenByDefault: Boolean!
   id: ID!
+  isDisabled: Boolean!
   locations: [Location!]
   path: String
   updatedAt: DateTime!
 }
 
+enum ChangeAction {
+  BATCH_UPDATE
+  CREATE
+  DELETE
+  TOGGLE
+  UPDATE
+}
+
 type Changelog {
+  changeData: JSON
   changeType: String!
   id: Int!
   modifiedBy: String!
@@ -28,11 +38,16 @@ type Changelog {
 input CreateCategoryInput {
   categoryName: String!
   hiddenByDefault: Boolean = false
+  isDisabled: Boolean = false
+  path: String
 }
 
 input CreateChangelogInput {
-  changeType: String!
-  modifiedBy: String!
+  action: ChangeAction!
+  changeData: JSON
+  entityId: String
+  entityName: String
+  entityType: EntityType!
 }
 
 input CreateLocationInput {
@@ -53,6 +68,11 @@ input CreateLocationInput {
 A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
 """
 scalar DateTime
+
+enum EntityType {
+  CATEGORY
+  LOCATION
+}
 
 type GridRegion {
   endX: Int!
@@ -123,6 +143,7 @@ type Mutation {
   refreshIconIndex: Boolean!
   removeCategory(id: ID!): Boolean!
   removeLocation(id: ID!): Boolean!
+  revertChange(changelogId: ID!): Boolean!
   updateCategory(updateCategoryInput: UpdateCategoryInput!): Category!
   updateLocation(updateLocationInput: UpdateLocationInput!): Location!
 }
@@ -130,6 +151,9 @@ type Mutation {
 type Query {
   categories: [Category!]!
   category(id: ID!): Category!
+
+  """Get count of locations in a category"""
+  categoryLocationCount(id: ID!): Int!
 
   """Get category with all its locations"""
   categoryWithLocations(id: ID!): Category!
@@ -197,6 +221,8 @@ input UpdateCategoryInput {
   categoryName: String
   hiddenByDefault: Boolean
   id: ID!
+  isDisabled: Boolean
+  path: String
 }
 
 input UpdateLocationInput {

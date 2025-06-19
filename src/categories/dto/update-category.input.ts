@@ -1,5 +1,5 @@
 import { InputType, Field, ID } from '@nestjs/graphql';
-import { IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsUUID, IsBoolean } from 'class-validator';
 
 @InputType()
 export class UpdateCategoryInput {
@@ -14,5 +14,15 @@ export class UpdateCategoryInput {
 
   @Field({ nullable: true })
   @IsOptional()
+  @IsBoolean()
   hiddenByDefault?: boolean;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsBoolean()
+  isDisabled?: boolean; // New: Allow updating disabled state
+
+  @Field({ nullable: true })
+  @IsOptional()
+  path?: string; // Category path
 }

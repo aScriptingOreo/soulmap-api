@@ -5,6 +5,7 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
 } from 'typeorm';
+import GraphQLJSON from 'graphql-type-json';
 
 @ObjectType()
 @Entity('changelog')
@@ -14,8 +15,12 @@ export class Changelog {
   id: number;
 
   @Field()
-  @Column({ name: 'changeType', type: 'text' })
+  @Column({ name: 'changeType', type: 'varchar', length: 100 })
   changeType: string;
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  @Column({ name: 'changeData', type: 'json', nullable: true })
+  changeData: any;
 
   @Field()
   @Column({ name: 'modifiedBy', type: 'text' })

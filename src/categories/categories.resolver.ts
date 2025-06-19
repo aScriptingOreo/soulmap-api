@@ -1,10 +1,4 @@
-import {
-  Resolver,
-  Query,
-  Mutation,
-  Args,
-  ID,
-} from '@nestjs/graphql';
+import { Resolver, Query, Mutation, Args, ID, Int, Context } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { Category } from './category.entity';
@@ -35,23 +29,35 @@ export class CategoriesResolver {
     return this.categoriesService.findOneWithLocations(id);
   }
 
+  @Query(() => Int, { description: 'Get count of locations in a category' })
+  async categoryLocationCount(
+    @Args('id', { type: () => ID }) id: string,
+  ): Promise<number> {
+    return this.categoriesService.getLocationCount(id);
+  }
+
   @Mutation(() => Category)
   @UseGuards(JwtAuthGuard)
   async createCategory(
     @Args('createCategoryInput') createCategoryInput: CreateCategoryInput,
+    @Context() context: any,
   ): Promise<Category> {
     console.log('Creating category with input:', createCategoryInput);
-    return this.categoriesService.create(createCategoryInput);
+    const userId = context.req.user.userId; // Get from JWT payload
+    return this.categoriesService.create(createCategoryInput, userId);
   }
 
   @Mutation(() => Category)
   @UseGuards(JwtAuthGuard)
   async updateCategory(
     @Args('updateCategoryInput') updateCategoryInput: UpdateCategoryInput,
+    @Context() context: any,
   ): Promise<Category> {
+    const userId = context.req.user.userId; // Get from JWT payload
     const category = await this.categoriesService.update(
       updateCategoryInput.id,
       updateCategoryInput,
+      userId,
     );
     return category;
   }
@@ -60,8 +66,10 @@ export class CategoriesResolver {
   @UseGuards(JwtAuthGuard)
   async removeCategory(
     @Args('id', { type: () => ID }) id: string,
+    @Context() context: any,
   ): Promise<boolean> {
-    const result = await this.categoriesService.remove(id);
+    const userId = context.req.user.userId; // Get from JWT payload
+    const result = await this.categoriesService.remove(id, userId);
     return result;
   }
 }

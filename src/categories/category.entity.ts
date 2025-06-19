@@ -17,6 +17,10 @@ export class Category {
   @Column({ default: false })
   hiddenByDefault: boolean;
 
+  @Field({ defaultValue: false })
+  @Column({ default: false })
+  isDisabled: boolean; // New: Control whether category is disabled
+
   @Field({ nullable: true })
   @Column({ type: 'varchar', length: 500, nullable: true })
   path?: string;

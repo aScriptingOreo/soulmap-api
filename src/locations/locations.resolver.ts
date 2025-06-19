@@ -85,8 +85,10 @@ export class LocationsResolver {
   @UseGuards(JwtAuthGuard)
   async removeLocation(
     @Args('id', { type: () => ID }) id: string,
+    @Context() context: any,
   ): Promise<boolean> {
-    return this.locationsService.remove(id);
+    const userId = context.req.user.userId; // Get from JWT payload
+    return this.locationsService.remove(id, userId);
   }
 
   @Query(() => [Location])

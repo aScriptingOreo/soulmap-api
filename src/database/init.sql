@@ -46,6 +46,24 @@ CREATE TABLE locations (
 CREATE INDEX idx_locations_versions ON locations USING GIN (versions);
 CREATE INDEX idx_categories_path ON categories(path);
 
+-- Changelog table for tracking changes
+CREATE TABLE changelog (
+    id SERIAL PRIMARY KEY,
+    "changeType" VARCHAR(255) NOT NULL,
+    action VARCHAR(50) NOT NULL,
+    "entityType" VARCHAR(50) NOT NULL,
+    "entityId" VARCHAR(255),
+    "entityName" VARCHAR(255),
+    "changeData" JSONB,
+    "userId" VARCHAR(255) NOT NULL,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Add indexes for changelog queries
+CREATE INDEX idx_changelog_entity ON changelog("entityType", "entityId");
+CREATE INDEX idx_changelog_user ON changelog("userId");
+CREATE INDEX idx_changelog_created_at ON changelog("createdAt");
+
 -- Sample data with paths
 INSERT INTO categories (id, "categoryName", "hiddenByDefault", path) VALUES 
 ('550e8400-e29b-41d4-a716-446655440000', 'Buildings', false, 'structures/buildings'),
